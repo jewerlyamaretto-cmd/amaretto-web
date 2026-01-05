@@ -65,12 +65,15 @@ async function getFeaturedProducts(featuredIds: {
 }) {
   try {
     await connectToDatabase()
+    const mongoose = await import('mongoose')
     const productIds = [
       featuredIds.ringsProductId,
       featuredIds.earringsProductId,
       featuredIds.necklacesProductId,
       featuredIds.braceletsProductId,
-    ].filter((id): id is string => !!id)
+    ]
+      .filter((id): id is string => !!id)
+      .map((id) => new mongoose.Types.ObjectId(id))
 
     if (productIds.length === 0) {
       return {}
@@ -81,14 +84,27 @@ async function getFeaturedProducts(featuredIds: {
 
     products.forEach((product) => {
       const productDto = JSON.parse(JSON.stringify(product)) as ProductDTO
-      productsMap[product._id.toString()] = productDto
+      // Normalizar el ID como string para la comparación
+      const productIdStr = product._id.toString()
+      productsMap[productIdStr] = productDto
     })
 
+    // Normalizar IDs para comparación
+    const normalizeId = (id?: string) => id ? id.trim() : null
+
     return {
-      rings: featuredIds.ringsProductId ? productsMap[featuredIds.ringsProductId] : null,
-      earrings: featuredIds.earringsProductId ? productsMap[featuredIds.earringsProductId] : null,
-      necklaces: featuredIds.necklacesProductId ? productsMap[featuredIds.necklacesProductId] : null,
-      bracelets: featuredIds.braceletsProductId ? productsMap[featuredIds.braceletsProductId] : null,
+      rings: featuredIds.ringsProductId 
+        ? productsMap[normalizeId(featuredIds.ringsProductId) || ''] || null
+        : null,
+      earrings: featuredIds.earringsProductId 
+        ? productsMap[normalizeId(featuredIds.earringsProductId) || ''] || null
+        : null,
+      necklaces: featuredIds.necklacesProductId 
+        ? productsMap[normalizeId(featuredIds.necklacesProductId) || ''] || null
+        : null,
+      bracelets: featuredIds.braceletsProductId 
+        ? productsMap[normalizeId(featuredIds.braceletsProductId) || ''] || null
+        : null,
     }
   } catch (error) {
     console.error('Error al obtener productos destacados:', error)
