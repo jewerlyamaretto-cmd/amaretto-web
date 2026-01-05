@@ -65,17 +65,17 @@ export async function POST(request: NextRequest) {
       const base64String = buffer.toString('base64')
       const dataURI = `data:${file.type};base64,${base64String}`
 
-      // Generar nombre único para la carpeta en Cloudinary
+      // Generar nombre único para la imagen en Cloudinary
       const timestamp = Date.now()
       const randomStr = Math.random().toString(36).substring(2, 15)
-      const publicId = `amaretto/productos/${timestamp}-${randomStr}`
+      const fileName = `${timestamp}-${randomStr}`
 
       // Subir a Cloudinary
       const uploadResult = await new Promise((resolve, reject) => {
         cloudinary.uploader.upload(
           dataURI,
           {
-            public_id: publicId,
+            public_id: fileName,
             folder: 'amaretto/productos',
             resource_type: 'image',
             transformation: [
