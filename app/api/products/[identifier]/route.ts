@@ -114,7 +114,7 @@ export async function PUT(
         category: body.category || 'Anillos',
         tags: Array.isArray(body.tags) ? body.tags : [],
         images: Array.isArray(body.images) 
-          ? body.images.map((img: any) => normalizeImageUrl(img)).filter((img): img is string => img !== null)
+          ? body.images.map((img: any) => normalizeImageUrl(img)).filter((img: string | null): img is string => img !== null)
           : [],
         stock: Number(body.stock) || 0,
         material: body.material || '',
@@ -163,7 +163,7 @@ export async function PUT(
         category: body.category || 'Anillos',
         tags: Array.isArray(body.tags) ? body.tags : [],
         images: Array.isArray(body.images) 
-          ? body.images.map((img: any) => normalizeImageUrl(img)).filter((img): img is string => img !== null)
+          ? body.images.map((img: any) => normalizeImageUrl(img)).filter((img: string | null): img is string => img !== null)
           : [],
         stock: Number(body.stock) || 0,
         material: body.material || '',
