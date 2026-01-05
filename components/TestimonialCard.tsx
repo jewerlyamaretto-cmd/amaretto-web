@@ -23,7 +23,7 @@ export default function TestimonialCard({ name, comment, rating }: TestimonialCa
       
       {/* Comentario */}
       <p className="text-amaretto-black/80 font-sans mb-4 italic">
-        "{comment}"
+        &ldquo;{comment}&rdquo;
       </p>
       
       {/* Nombre */}
