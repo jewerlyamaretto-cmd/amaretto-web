@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Model } from 'mongoose'
 
-export interface IProduct extends Document {
+export interface IProduct extends Omit<Document, 'isNew'> {
   name: string
   slug: string
   description: string
