@@ -2,10 +2,12 @@ import Link from 'next/link'
 import CollectionCard from '@/components/CollectionCard'
 import TestimonialCard from '@/components/TestimonialCard'
 import WhatsAppButton from '@/components/WhatsAppButton'
+import HeroProductCarousel from '@/components/HeroProductCarousel'
 import { connectToDatabase } from '@/src/lib/db'
 import { Product } from '@/src/models/Product'
 import { Settings } from '@/src/models/Settings'
 import ProductImage from '@/components/ProductImage'
+import { ProductDTO } from '@/src/types/product'
 
 async function getSettings() {
   try {
@@ -18,23 +20,25 @@ async function getSettings() {
   }
 }
 
-async function getRandomProduct() {
+async function getProductsForHero() {
   try {
     await connectToDatabase()
-    const products = await Product.find({ stock: { $gt: 0 } }).lean()
-    if (products.length === 0) return null
+    const products = await Product.find({ stock: { $gt: 0 } })
+      .limit(10)
+      .lean()
     
-    const randomIndex = Math.floor(Math.random() * products.length)
-    return products[randomIndex]
+    // Mezclar productos aleatoriamente
+    const shuffled = products.sort(() => Math.random() - 0.5)
+    return JSON.parse(JSON.stringify(shuffled)) as ProductDTO[]
   } catch (error) {
-    console.error('Error al obtener producto aleatorio:', error)
-    return null
+    console.error('Error al obtener productos para hero:', error)
+    return []
   }
 }
 
 export default async function Home() {
   const settings = await getSettings()
-  const randomProduct = settings?.heroType === 'random' ? await getRandomProduct() : null
+  const heroProducts = settings?.heroType === 'random' ? await getProductsForHero() : []
   const collections = [
     {
       name: 'Anillos',
@@ -104,33 +108,24 @@ export default async function Home() {
             </div>
             
             {/* Imagen Hero */}
-            <div className="relative w-full h-96 bg-amaretto-beige rounded-lg overflow-hidden">
-              {settings?.heroType === 'manual' && settings?.heroImage ? (
+            {settings?.heroType === 'manual' && settings?.heroImage ? (
+              <div className="relative w-full h-96 bg-amaretto-beige rounded-lg overflow-hidden">
                 <ProductImage
                   src={settings.heroImage}
                   alt="Imagen destacada"
                   className="w-full h-96"
                   fallback="Imagen no disponible"
                 />
-              ) : randomProduct && randomProduct.images && randomProduct.images[0] ? (
-                <Link href={`/producto/${randomProduct.slug}`} className="block w-full h-full group">
-                  <ProductImage
-                    src={randomProduct.images[0]}
-                    alt={randomProduct.name}
-                    className="w-full h-96"
-                    fallback="Imagen no disponible"
-                  />
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <p className="text-white font-serif text-lg font-semibold">{randomProduct.name}</p>
-                    <p className="text-white/90 font-sans text-sm">${randomProduct.price?.toLocaleString('es-MX')} MXN</p>
-                  </div>
-                </Link>
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-amaretto-black/30 font-sans text-sm">
-                  Imagen Hero
-                </div>
-              )}
-            </div>
+              </div>
+            ) : heroProducts.length > 0 ? (
+              <HeroProductCarousel products={heroProducts} />
+            ) : (
+              <div className="relative w-full h-96 bg-amaretto-beige rounded-lg flex items-center justify-center">
+                <p className="text-amaretto-black/30 font-sans text-sm">
+                  No hay productos disponibles
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </section>
