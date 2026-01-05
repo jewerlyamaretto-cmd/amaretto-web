@@ -3,21 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-// Función helper para validar URLs de imágenes
-const validateImageUrl = (imageUrl: string | undefined | null): string | null => {
-  if (!imageUrl || typeof imageUrl !== 'string') {
-    return null
-  }
-  
-  const url = imageUrl.trim()
-  
-  // Solo aceptar URLs completas (http/https)
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url
-  }
-  
-  return null
-}
 
 const emptyProduct = {
   name: '',
@@ -95,6 +80,7 @@ export default function AdminPage() {
   const [isSettingsLoading, setIsSettingsLoading] = useState(false)
   const [isSavingSettings, setIsSavingSettings] = useState(false)
   const [productImages, setProductImages] = useState<string[]>([])
+  const [isUploadingImages, setIsUploadingImages] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   async function fetchProducts() {
@@ -300,11 +286,7 @@ O si tienes MongoDB local:
         price: Number(form.price),
         category: form.category,
         tags: form.tags ? form.tags.split(',').map((tag) => tag.trim()).filter(tag => tag) : [],
-        images: productImages.length > 0 
-          ? productImages.filter(img => validateImageUrl(img) !== null)
-          : (form.images 
-              ? form.images.split(',').map((img) => validateImageUrl(img.trim())).filter((img): img is string => img !== null)
-              : []),
+        images: productImages.length > 0 ? productImages : [],
         stock: Number(form.stock) || 0,
         material: form.material || '',
         medidas: form.medidas || '',
@@ -368,19 +350,17 @@ O si tienes MongoDB local:
   }
 
   const handleEdit = (product: ProductForm) => {
-    // Cargar URLs de imágenes válidas
+    // Cargar URLs de imágenes
     const imagesArray = product.images 
       ? (Array.isArray(product.images) 
           ? product.images 
           : String(product.images).split(',').map(img => img.trim()).filter(img => img))
-        .map(img => validateImageUrl(img))
-        .filter((img): img is string => img !== null)
       : []
     
     setForm({
       ...product,
       tags: product.tags ? (Array.isArray(product.tags) ? product.tags.join(', ') : String(product.tags)) : '',
-      images: product.images ? (Array.isArray(product.images) ? product.images.join(', ') : String(product.images)) : '',
+      images: '',
       originalPrice: product.originalPrice || 0,
       discountPrice: product.discountPrice || 0,
       isOnSale: product.isOnSale || false,
@@ -389,36 +369,58 @@ O si tienes MongoDB local:
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const handleAddImageFromInput = () => {
-    if (!form.images || form.images.trim() === '') {
-      setError('Ingresa al menos una URL de imagen')
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    // Validar cantidad máxima
+    if (productImages.length + files.length > 5) {
+      setError('Máximo 5 imágenes permitidas')
       return
     }
 
-    const urls = form.images
-      .split(',')
-      .map(url => url.trim())
-      .filter(url => url.length > 0)
-      .map(url => validateImageUrl(url))
-      .filter((url): url is string => url !== null)
-
-    if (urls.length === 0) {
-      setError('No se encontraron URLs válidas. Las URLs deben comenzar con http:// o https://')
-      return
-    }
-
-    const totalImages = productImages.length + urls.length
-    if (totalImages > 5) {
-      setError(`Máximo 5 imágenes permitidas. Ya tienes ${productImages.length} y estás intentando agregar ${urls.length}`)
-      return
-    }
-
-    // Agregar nuevas URLs al estado
-    setProductImages(prev => [...prev, ...urls])
-    setForm(prev => ({ ...prev, images: '' }))
+    setIsUploadingImages(true)
     setError(null)
-    setSuccessMessage(`${urls.length} imagen(es) agregada(s) exitosamente`)
-    setTimeout(() => setSuccessMessage(null), 4000)
+
+    try {
+      const formData = new FormData()
+      Array.from(files).forEach((file) => {
+        formData.append('files', file)
+      })
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al subir las imágenes')
+      }
+
+      if (!data || !data.files || !Array.isArray(data.files) || data.files.length === 0) {
+        throw new Error('No se recibieron imágenes del servidor')
+      }
+
+      // Agregar las URLs de Cloudinary al estado
+      const newUrls = data.files.filter((url: string) => url && typeof url === 'string' && url.trim().startsWith('http'))
+      
+      if (newUrls.length === 0) {
+        throw new Error('No se recibieron URLs válidas')
+      }
+
+      setProductImages(prev => [...prev, ...newUrls])
+      setSuccessMessage(`${newUrls.length} imagen(es) subida(s) exitosamente`)
+      setTimeout(() => setSuccessMessage(null), 4000)
+      
+      e.target.value = '' // Limpiar input
+    } catch (err) {
+      console.error(err)
+      setError(err instanceof Error ? err.message : 'Error al subir las imágenes')
+    } finally {
+      setIsUploadingImages(false)
+    }
   }
 
   const handleRemoveImage = (index: number) => {
@@ -706,30 +708,18 @@ O si tienes MongoDB local:
                     Imágenes del producto (1-5 imágenes)
                   </label>
                   
-                  {/* Input para agregar URLs */}
-                  <div className="flex gap-2 mb-3">
+                  {/* Input para subir imágenes */}
+                  <label className="block w-full px-4 py-3 bg-amaretto-pink text-white rounded-lg cursor-pointer hover:bg-amaretto-pink/90 transition-colors text-center font-sans text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed mb-3">
+                    {isUploadingImages ? 'Subiendo imágenes...' : 'Subir imágenes'}
                     <input
-                      name="images"
-                      value={form.images}
-                      onChange={handleChange}
-                      className="flex-1 px-4 py-2 text-sm rounded-lg border border-amaretto-gray-light focus:ring-2 focus:ring-amaretto-pink outline-none font-sans"
-                      placeholder="https://ejemplo.com/imagen1.jpg, https://ejemplo.com/imagen2.jpg"
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault()
-                          handleAddImageFromInput()
-                        }
-                      }}
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                      multiple
+                      onChange={handleImageUpload}
+                      disabled={isUploadingImages || productImages.length >= 5}
+                      className="hidden"
                     />
-                    <button
-                      type="button"
-                      onClick={handleAddImageFromInput}
-                      disabled={productImages.length >= 5 || !form.images.trim()}
-                      className="px-4 py-2 bg-amaretto-pink text-white rounded-lg hover:bg-amaretto-pink/90 transition-colors font-sans text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Agregar
-                    </button>
-                  </div>
+                  </label>
                   
                   {productImages.length > 0 && (
                     <div className="mt-4 space-y-4">
@@ -776,7 +766,7 @@ O si tienes MongoDB local:
                   )}
                   
                   <p className="text-xs text-amaretto-black/60 mt-2">
-                    {productImages.length}/5 imágenes. Ingresa URLs completas (http:// o https://) separadas por comas.
+                    {productImages.length}/5 imágenes. Puedes subir hasta 5 imágenes por producto.
                   </p>
                 </div>
               </div>
