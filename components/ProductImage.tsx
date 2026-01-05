@@ -5,15 +5,16 @@ interface ProductImageProps {
   alt: string
   className?: string
   fallback?: string
+  objectFit?: 'cover' | 'contain'
 }
 
-export default function ProductImage({ src, alt, className = '', fallback = 'Imagen no disponible' }: ProductImageProps) {
+export default function ProductImage({ src, alt, className = '', fallback = 'Imagen no disponible', objectFit = 'contain' }: ProductImageProps) {
   return (
     <div className={`relative ${className}`}>
       <img
         src={src}
         alt={alt}
-        className="w-full h-full object-cover"
+        className={`w-full h-full ${objectFit === 'cover' ? 'object-cover' : 'object-contain'}`}
         onError={(e) => {
           e.currentTarget.style.display = 'none'
           const parent = e.currentTarget.parentElement
