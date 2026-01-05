@@ -84,15 +84,44 @@ export async function POST(request: NextRequest) {
             ]
           },
           (error, result) => {
-            if (error) reject(error)
-            else resolve(result)
+            if (error) {
+              console.error('Error de Cloudinary:', error)
+              reject(error)
+            } else {
+              console.log('✅ Cloudinary upload exitoso:', {
+                secure_url: result?.secure_url,
+                url: result?.url,
+                public_id: result?.public_id
+              })
+              resolve(result)
+            }
           }
         )
       }) as any
 
+      // Verificar que tenemos una URL válida
+      if (!uploadResult || !uploadResult.secure_url) {
+        console.error('❌ Cloudinary no devolvió secure_url:', uploadResult)
+        throw new Error('Error: Cloudinary no devolvió una URL válida')
+      }
+
       // Guardar la URL segura (HTTPS) de Cloudinary
-      uploadedFiles.push(uploadResult.secure_url)
+      const imageUrl = uploadResult.secure_url
+      console.log('✅ URL agregada a la lista:', imageUrl)
+      uploadedFiles.push(imageUrl)
     }
+
+    // Verificar que tenemos URLs antes de responder
+    if (uploadedFiles.length === 0) {
+      console.error('❌ No se subieron archivos')
+      return NextResponse.json(
+        { error: 'No se pudieron subir las imágenes' },
+        { status: 500 }
+      )
+    }
+
+    console.log('✅ Total de archivos subidos:', uploadedFiles.length)
+    console.log('✅ URLs finales:', uploadedFiles)
 
     // Generar URLs completas para cada archivo (ya son URLs completas de Cloudinary)
     const filesWithUrls = uploadedFiles.map((url) => ({
@@ -100,12 +129,16 @@ export async function POST(request: NextRequest) {
       url: url,
     }))
 
-    return NextResponse.json({ 
+    const response = { 
       success: true, 
       files: uploadedFiles, // URLs completas de Cloudinary
       filesWithUrls: filesWithUrls,
       message: `${uploadedFiles.length} imagen(es) subida(s) exitosamente`
-    })
+    }
+
+    console.log('✅ Respuesta que se envía al cliente:', response)
+
+    return NextResponse.json(response)
   } catch (error: any) {
     console.error('Error al subir archivos a Cloudinary:', error)
     return NextResponse.json(
