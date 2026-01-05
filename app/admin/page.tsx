@@ -79,6 +79,7 @@ export default function AdminPage() {
   const [isSettingsLoading, setIsSettingsLoading] = useState(false)
   const [isSavingSettings, setIsSavingSettings] = useState(false)
   const [productImages, setProductImages] = useState<string[]>([])
+  const [imageKey, setImageKey] = useState(0) // Para forzar re-render
   const [isUploadingImages, setIsUploadingImages] = useState(false)
   const [showCloudinaryGallery, setShowCloudinaryGallery] = useState(false)
   const [cloudinaryImages, setCloudinaryImages] = useState<any[]>([])
@@ -398,46 +399,29 @@ O si tienes MongoDB local:
         throw new Error(data.error || 'Error al subir las imágenes')
       }
 
-      // Verificar que data.files existe y es un array
-      if (!data || !data.files || !Array.isArray(data.files)) {
-        console.error('❌ Respuesta inválida:', data)
-        throw new Error('Respuesta inválida del servidor')
+      // Verificar respuesta
+      if (!data || !data.files || !Array.isArray(data.files) || data.files.length === 0) {
+        throw new Error('No se recibieron imágenes del servidor')
       }
 
-      console.log('📦 Respuesta recibida:', data)
-      console.log('📦 data.files:', data.files)
-
-      // Filtrar y limpiar las URLs
-      const validUrls = data.files
-        .filter((url: any) => {
-          const isValid = url && typeof url === 'string' && url.trim().length > 0 && url.startsWith('http')
-          if (!isValid) {
-            console.warn('⚠️ URL inválida descartada:', url)
-          }
-          return isValid
-        })
+      // Filtrar URLs válidas
+      const newUrls = data.files
+        .filter((url: any) => url && typeof url === 'string' && url.trim().startsWith('http'))
         .map((url: string) => url.trim())
-
-      console.log('✅ URLs válidas después de filtrar:', validUrls)
-
-      if (validUrls.length === 0) {
-        throw new Error('No se recibieron URLs válidas de imágenes')
+      
+      if (newUrls.length === 0) {
+        throw new Error('Las URLs recibidas no son válidas')
       }
 
-      // Actualizar estado de forma síncrona
-      console.log('🔄 ANTES de setProductImages. Estado actual:', productImages)
-      console.log('🔄 URLs a agregar:', validUrls)
-      
-      setProductImages((prev) => {
-        const newImages = [...prev, ...validUrls]
-        console.log('✅✅✅ setProductImages ejecutado')
-        console.log('✅ Estado anterior:', prev)
-        console.log('✅ Nuevo estado:', newImages)
-        console.log('✅ Total de imágenes:', newImages.length)
-        return newImages
+      // Actualizar estado y forzar re-render
+      setProductImages((prevImages) => {
+        return [...prevImages, ...newUrls]
       })
-
-      setSuccessMessage(`${validUrls.length} imagen(es) subida(s) exitosamente`)
+      
+      // Forzar re-render del componente de imágenes
+      setImageKey(prev => prev + 1)
+      
+      setSuccessMessage(`${newUrls.length} imagen(es) subida(s) exitosamente`)
       setTimeout(() => setSuccessMessage(null), 4000)
       
       e.target.value = '' // Limpiar input
@@ -803,37 +787,22 @@ O si tienes MongoDB local:
                       <p className="text-sm font-sans font-medium text-amaretto-black mb-2">
                         Vista previa de imágenes ({productImages.length}/5):
                       </p>
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                        {productImages.map((image, index) => {
-                          if (!image) {
-                            console.warn('⚠️ Imagen vacía en índice:', index)
+                      <div key={imageKey} className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        {productImages.map((imageUrl, index) => {
+                          if (!imageUrl || typeof imageUrl !== 'string') {
                             return null
                           }
                           
-                          const imageUrl = String(image).trim()
-                          console.log(`🖼️ Renderizando imagen ${index + 1}:`, imageUrl)
+                          const url = imageUrl.trim()
                           
                           return (
-                            <div key={`product-img-${index}-${imageUrl.substring(0, 20)}`} className="relative group">
-                              <div className="w-full h-24 rounded-lg border-2 border-amaretto-gray-light overflow-hidden bg-gray-100">
+                            <div key={`img-${index}-${url.substring(url.length - 20)}`} className="relative group">
+                              <div className="w-full h-24 rounded-lg border-2 border-amaretto-gray-light overflow-hidden bg-white flex items-center justify-center">
                                 <img
-                                  src={imageUrl}
+                                  src={url}
                                   alt={`Imagen ${index + 1}`}
                                   className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    console.error('❌ ERROR cargando imagen:', imageUrl)
-                                    console.error('❌ Error details:', e)
-                                    const img = e.currentTarget
-                                    img.style.backgroundColor = '#fee2e2'
-                                    img.style.display = 'flex'
-                                    img.style.alignItems = 'center'
-                                    img.style.justifyContent = 'center'
-                                    img.alt = 'Error al cargar'
-                                  }}
-                                  onLoad={(e) => {
-                                    console.log('✅✅✅ IMAGEN CARGADA EXITOSAMENTE:', imageUrl)
-                                    console.log('✅ Dimensiones:', e.currentTarget.naturalWidth, 'x', e.currentTarget.naturalHeight)
-                                  }}
+                                  style={{ minHeight: '96px' }}
                                 />
                               </div>
                               <button
