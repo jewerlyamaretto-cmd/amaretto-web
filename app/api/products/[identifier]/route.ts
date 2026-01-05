@@ -4,6 +4,24 @@ import { Product } from '@/src/models/Product'
 import mongoose from 'mongoose'
 import * as fileStorage from '@/src/lib/fileStorage'
 
+// Función helper para normalizar URLs de imágenes
+const normalizeImageUrl = (imageUrl: string | undefined | null): string | null => {
+  if (!imageUrl || typeof imageUrl !== 'string') {
+    return null
+  }
+  
+  const url = imageUrl.trim()
+  
+  // Si ya es una URL completa (http/https), retornarla
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url
+  }
+  
+  // Si es un public_id, construir la URL completa
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || 'dtoa33cb1'
+  return `https://res.cloudinary.com/${cloudName}/image/upload/${url}`
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { identifier: string } }
@@ -95,7 +113,9 @@ export async function PUT(
         price: Number(body.price),
         category: body.category || 'Anillos',
         tags: Array.isArray(body.tags) ? body.tags : [],
-        images: Array.isArray(body.images) ? body.images : [],
+        images: Array.isArray(body.images) 
+          ? body.images.map(img => normalizeImageUrl(img)).filter((img): img is string => img !== null)
+          : [],
         stock: Number(body.stock) || 0,
         material: body.material || '',
         medidas: body.medidas || '',
@@ -142,7 +162,9 @@ export async function PUT(
         price: Number(body.price),
         category: body.category || 'Anillos',
         tags: Array.isArray(body.tags) ? body.tags : [],
-        images: Array.isArray(body.images) ? body.images : [],
+        images: Array.isArray(body.images) 
+          ? body.images.map(img => normalizeImageUrl(img)).filter((img): img is string => img !== null)
+          : [],
         stock: Number(body.stock) || 0,
         material: body.material || '',
         medidas: body.medidas || '',

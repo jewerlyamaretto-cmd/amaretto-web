@@ -3,6 +3,24 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
+// Función helper para normalizar URLs de imágenes
+const normalizeImageUrl = (imageUrl: string | undefined | null): string | null => {
+  if (!imageUrl || typeof imageUrl !== 'string') {
+    return null
+  }
+  
+  const url = imageUrl.trim()
+  
+  // Si ya es una URL completa (http/https), retornarla
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url
+  }
+  
+  // Si es un public_id, construir la URL completa
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dtoa33cb1'
+  return `https://res.cloudinary.com/${cloudName}/image/upload/${url}`
+}
+
 const emptyProduct = {
   name: '',
   slug: '',
@@ -289,7 +307,11 @@ O si tienes MongoDB local:
         price: Number(form.price),
         category: form.category,
         tags: form.tags ? form.tags.split(',').map((tag) => tag.trim()).filter(tag => tag) : [],
-        images: productImages.length > 0 ? productImages : (form.images ? form.images.split(',').map((img) => img.trim()).filter(img => img) : []),
+        images: productImages.length > 0 
+          ? productImages.map(img => normalizeImageUrl(img)).filter((img): img is string => img !== null)
+          : (form.images 
+              ? form.images.split(',').map((img) => normalizeImageUrl(img.trim())).filter((img): img is string => img !== null)
+              : []),
         stock: Number(form.stock) || 0,
         material: form.material || '',
         medidas: form.medidas || '',
@@ -353,8 +375,13 @@ O si tienes MongoDB local:
   }
 
   const handleEdit = (product: ProductForm) => {
+    // Normalizar todas las URLs de imágenes
     const imagesArray = product.images 
-      ? (Array.isArray(product.images) ? product.images : String(product.images).split(',').map(img => img.trim()).filter(img => img))
+      ? (Array.isArray(product.images) 
+          ? product.images 
+          : String(product.images).split(',').map(img => img.trim()).filter(img => img))
+        .map(img => normalizeImageUrl(img))
+        .filter((img): img is string => img !== null)
       : []
     
     setForm({
@@ -482,15 +509,25 @@ O si tienes MongoDB local:
     }
   }
 
-  const handleSelectCloudinaryImage = (imageUrl: string) => {
+  const handleSelectCloudinaryImage = (image: any) => {
     if (productImages.length >= 5) {
       setError('Máximo 5 imágenes permitidas')
       return
     }
+    
+    // Asegurar que siempre usamos secure_url
+    const imageUrl = image.secure_url || (image.public_id ? normalizeImageUrl(image.public_id) : null)
+    
+    if (!imageUrl) {
+      setError('No se pudo obtener la URL de la imagen')
+      return
+    }
+    
     if (productImages.includes(imageUrl)) {
       setError('Esta imagen ya está seleccionada')
       return
     }
+    
     setProductImages((prev) => [...prev, imageUrl])
     setError(null)
   }
@@ -965,7 +1002,7 @@ O si tienes MongoDB local:
                                     ? 'border-amaretto-gray-light hover:border-amaretto-pink'
                                     : 'border-amaretto-gray-light opacity-50 cursor-not-allowed'
                                 }`}
-                                onClick={() => canSelect && handleSelectCloudinaryImage(image.secure_url)}
+                                onClick={() => canSelect && handleSelectCloudinaryImage(image)}
                               >
                                 <img
                                   src={image.secure_url}
