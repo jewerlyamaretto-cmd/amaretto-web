@@ -11,9 +11,24 @@ export default function ProductCard({ product }: ProductCardProps) {
       <div className="bg-amaretto-white border border-amaretto-gray-light rounded-lg overflow-hidden hover:shadow-lg transition-shadow duration-300">
         {/* Imagen del producto */}
         <div className="relative w-full h-64 bg-amaretto-beige overflow-hidden">
-          <div className="w-full h-full flex items-center justify-center text-amaretto-black/30 font-sans text-sm">
-            {product.images[0] || 'Imagen'}
-          </div>
+          {product.images && product.images[0] ? (
+            <img
+              src={product.images[0]}
+              alt={product.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+                const parent = e.currentTarget.parentElement
+                if (parent) {
+                  parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-amaretto-black/30 font-sans text-sm">Imagen no disponible</div>'
+                }
+              }}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-amaretto-black/30 font-sans text-sm">
+              Imagen
+            </div>
+          )}
         </div>
         
         {/* Información del producto */}

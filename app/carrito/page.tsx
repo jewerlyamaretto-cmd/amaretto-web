@@ -90,9 +90,24 @@ export default function Carrito() {
                     href={`/producto/${item.product.slug}`}
                     className="w-full sm:w-32 h-32 bg-amaretto-beige rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden"
                   >
-                    <span className="text-amaretto-black/30 font-sans text-xs">
-                      {item.product.images[0] || 'Imagen'}
-                    </span>
+                    {item.product.images && item.product.images[0] ? (
+                      <img
+                        src={item.product.images[0]}
+                        alt={item.product.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none'
+                          const parent = e.currentTarget.parentElement
+                          if (parent) {
+                            parent.innerHTML = '<span class="text-amaretto-black/30 font-sans text-xs">Imagen</span>'
+                          }
+                        }}
+                      />
+                    ) : (
+                      <span className="text-amaretto-black/30 font-sans text-xs">
+                        Imagen
+                      </span>
+                    )}
                   </Link>
 
                   {/* Información */}

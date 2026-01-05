@@ -84,23 +84,49 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
             <div className="space-y-4">
               {/* Imagen principal */}
               <div className="relative w-full h-96 bg-amaretto-beige rounded-lg overflow-hidden">
-                <div className="w-full h-full flex items-center justify-center text-amaretto-black/30 font-sans text-sm">
-                  {product.images[0] || 'Imagen principal'}
-                </div>
+                {product.images && product.images[0] ? (
+                  <img
+                    src={product.images[0]}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                      const parent = e.currentTarget.parentElement
+                      if (parent) {
+                        parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-amaretto-black/30 font-sans text-sm">Imagen no disponible</div>'
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-amaretto-black/30 font-sans text-sm">
+                    Imagen principal
+                  </div>
+                )}
               </div>
               
               {/* Miniaturas */}
               <div className="grid grid-cols-3 gap-4">
-                {product.images.slice(1, 4).map((image, index) => (
-                  <div
-                    key={index}
-                    className="relative w-full h-24 bg-amaretto-gray-light rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity duration-200"
-                  >
-                    <div className="w-full h-full flex items-center justify-center text-amaretto-black/30 font-sans text-xs">
-                      {image}
+                {product.images && product.images.length > 1 ? (
+                  product.images.slice(1, 4).map((image, index) => (
+                    <div
+                      key={index}
+                      className="relative w-full h-24 bg-amaretto-gray-light rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity duration-200"
+                    >
+                      <img
+                        src={image}
+                        alt={`${product.name} - Vista ${index + 2}`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none'
+                          const parent = e.currentTarget.parentElement
+                          if (parent) {
+                            parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-amaretto-black/30 font-sans text-xs">Imagen</div>'
+                          }
+                        }}
+                      />
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : null}
               </div>
             </div>
 

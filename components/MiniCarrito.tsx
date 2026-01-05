@@ -71,7 +71,22 @@ export default function MiniCarrito() {
                     {/* Imagen */}
                     <div className="w-20 h-20 bg-amaretto-beige rounded-lg flex-shrink-0 flex items-center justify-center">
                       <span className="text-amaretto-black/30 font-sans text-xs">
-                        {item.product.images[0] || 'Imagen'}
+                        {item.product.images && item.product.images[0] ? (
+                          <img
+                            src={item.product.images[0]}
+                            alt={item.product.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none'
+                              const parent = e.currentTarget.parentElement
+                              if (parent) {
+                                parent.innerHTML = '<span class="text-amaretto-black/30 font-sans text-xs">Imagen</span>'
+                              }
+                            }}
+                          />
+                        ) : (
+                          <span className="text-amaretto-black/30 font-sans text-xs">Imagen</span>
+                        )}
                       </span>
                     </div>
 
