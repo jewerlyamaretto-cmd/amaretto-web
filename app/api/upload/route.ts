@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
         const base64String = buffer.toString('base64')
         const dataURI = `data:${file.type};base64,${base64String}`
 
-        // Generar nombre único para la imagen
+        // Generar nombre único para la imagen (solo el nombre, sin carpeta)
         const timestamp = Date.now()
         const randomStr = Math.random().toString(36).substring(2, 15)
         const fileName = `${timestamp}-${randomStr}`
@@ -56,8 +56,7 @@ export async function POST(request: NextRequest) {
           cloudinary.uploader.upload(
             dataURI,
             {
-              public_id: fileName,
-              folder: 'amaretto/productos',
+              public_id: `amaretto/productos/${fileName}`, // Incluir la carpeta en public_id
               resource_type: 'image',
               transformation: [
                 { quality: 'auto' },
