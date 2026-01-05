@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Model } from 'mongoose'
 
-export interface IProduct extends Omit<Document, 'isNew'> {
+interface IProductBase {
   name: string
   slug: string
   description: string
@@ -20,6 +20,8 @@ export interface IProduct extends Omit<Document, 'isNew'> {
   createdAt: Date
   updatedAt: Date
 }
+
+export interface IProduct extends Omit<Document, 'isNew'>, IProductBase {}
 
 const ProductSchema = new Schema<IProduct>(
   {
