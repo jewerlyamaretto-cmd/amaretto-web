@@ -52,11 +52,13 @@ export async function POST(request: NextRequest) {
         const fileName = `${timestamp}-${randomStr}`
 
         // Subir a Cloudinary
+        // IMPORTANTE: Solo usar folder, NO incluir carpeta en public_id para evitar duplicación
         const uploadResult = await new Promise((resolve, reject) => {
           cloudinary.uploader.upload(
             dataURI,
             {
-              public_id: `amaretto/productos/${fileName}`, // Incluir la carpeta en public_id
+              public_id: fileName, // Solo el nombre del archivo, sin carpeta
+              folder: 'amaretto/productos', // La carpeta se especifica por separado
               resource_type: 'image',
               transformation: [
                 { quality: 'auto' },
@@ -68,7 +70,9 @@ export async function POST(request: NextRequest) {
                 console.error('Error en Cloudinary upload:', error)
                 reject(error)
               } else {
-                console.log('✅ Cloudinary upload exitoso:', result?.secure_url)
+                console.log('✅ Cloudinary upload exitoso')
+                console.log('✅ secure_url:', result?.secure_url)
+                console.log('✅ public_id:', result?.public_id)
                 resolve(result)
               }
             }
@@ -77,7 +81,17 @@ export async function POST(request: NextRequest) {
 
         // Guardar la URL segura (HTTPS) de Cloudinary
         if (uploadResult?.secure_url) {
-          uploadedUrls.push(uploadResult.secure_url)
+          // Verificar que la URL no tenga la carpeta duplicada
+          let finalUrl = uploadResult.secure_url
+          
+          // Si la URL tiene la carpeta duplicada, corregirla
+          if (finalUrl.includes('amaretto/productos/amaretto/productos/')) {
+            finalUrl = finalUrl.replace('amaretto/productos/amaretto/productos/', 'amaretto/productos/')
+            console.log('⚠️ URL corregida (tenía carpeta duplicada):', finalUrl)
+          }
+          
+          uploadedUrls.push(finalUrl)
+          console.log('✅ URL final agregada:', finalUrl)
         } else {
           console.error('❌ Cloudinary no devolvió secure_url:', uploadResult)
         }
