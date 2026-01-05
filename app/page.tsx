@@ -2,11 +2,10 @@ import Link from 'next/link'
 import CollectionCard from '@/components/CollectionCard'
 import TestimonialCard from '@/components/TestimonialCard'
 import WhatsAppButton from '@/components/WhatsAppButton'
-import HeroProductCarousel from '@/components/HeroProductCarousel'
+import HeroBackgroundCarousel from '@/components/HeroBackgroundCarousel'
 import { connectToDatabase } from '@/src/lib/db'
 import { Product } from '@/src/models/Product'
 import { Settings } from '@/src/models/Settings'
-import ProductImage from '@/components/ProductImage'
 import { ProductDTO } from '@/src/types/product'
 
 async function getSettings() {
@@ -24,7 +23,7 @@ async function getProductsForHero() {
   try {
     await connectToDatabase()
     const products = await Product.find({ stock: { $gt: 0 } })
-      .limit(10)
+      .limit(20) // Obtener más productos para mejor variedad
       .lean()
     
     // Mezclar productos aleatoriamente
@@ -38,7 +37,8 @@ async function getProductsForHero() {
 
 export default async function Home() {
   const settings = await getSettings()
-  const heroProducts = settings?.heroType === 'random' ? await getProductsForHero() : []
+  // Siempre obtener productos para el hero de fondo
+  const heroProducts = await getProductsForHero()
   const collections = [
     {
       name: 'Anillos',
@@ -87,45 +87,29 @@ export default async function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative bg-amaretto-beige py-20 md:py-32">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+      <section className="relative bg-amaretto-beige py-20 md:py-32 min-h-[600px] md:min-h-[700px] flex items-center overflow-hidden">
+        {/* Fondo con imágenes de productos */}
+        <HeroBackgroundCarousel products={heroProducts} />
+        
+        {/* Contenido superpuesto */}
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+          <div className="max-w-2xl">
             {/* Texto */}
             <div className="text-center md:text-left">
-              <h1 className="font-serif text-4xl md:text-6xl font-bold text-amaretto-black mb-6">
+              <h1 className="font-serif text-4xl md:text-6xl font-bold text-white mb-6 drop-shadow-lg">
                 Joyería elegante para tu día a día
               </h1>
-              <p className="text-lg text-amaretto-black/70 font-sans mb-8 max-w-xl mx-auto md:mx-0">
+              <p className="text-lg text-white/90 font-sans mb-8 max-w-xl mx-auto md:mx-0 drop-shadow-md">
                 Piezas minimalistas en acero inoxidable y chapa de oro. 
                 Hipoalergénicas, resistentes y diseñadas para mujeres modernas.
               </p>
               <Link
                 href="/coleccion"
-                className="inline-block bg-amaretto-black text-white font-sans font-medium px-8 py-4 rounded-lg hover:bg-amaretto-black/90 transition-colors duration-200"
+                className="inline-block bg-white text-amaretto-black font-sans font-medium px-8 py-4 rounded-lg hover:bg-white/90 transition-colors duration-200 shadow-lg"
               >
                 Ver colección
               </Link>
             </div>
-            
-            {/* Imagen Hero */}
-            {settings?.heroType === 'manual' && settings?.heroImage ? (
-              <div className="relative w-full h-96 bg-amaretto-beige rounded-lg overflow-hidden">
-                <ProductImage
-                  src={settings.heroImage}
-                  alt="Imagen destacada"
-                  className="w-full h-96"
-                  fallback="Imagen no disponible"
-                />
-              </div>
-            ) : heroProducts.length > 0 ? (
-              <HeroProductCarousel products={heroProducts} />
-            ) : (
-              <div className="relative w-full h-96 bg-amaretto-beige rounded-lg flex items-center justify-center">
-                <p className="text-amaretto-black/30 font-sans text-sm">
-                  No hay productos disponibles
-                </p>
-              </div>
-            )}
           </div>
         </div>
       </section>
