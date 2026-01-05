@@ -19,6 +19,7 @@ const emptyProduct = {
   material: '',
   medidas: '',
   cierre: '',
+  isNew: false,
 }
 
 type ProductForm = typeof emptyProduct & {
@@ -299,6 +300,7 @@ O si tienes MongoDB local:
         medidas: form.medidas || '',
         cierre: form.cierre || '',
         featured: false,
+        isNew: form.isNew || false,
       }
       
       // Si está en oferta, configurar campos de oferta
@@ -371,6 +373,7 @@ O si tienes MongoDB local:
       originalPrice: product.originalPrice || 0,
       discountPrice: product.discountPrice || 0,
       isOnSale: product.isOnSale || false,
+      isNew: product.isNew || false,
     })
     setProductImages(imagesArray)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -686,6 +689,18 @@ O si tienes MongoDB local:
                 />
                 <label className="text-sm font-sans font-medium text-amaretto-black">
                   Producto en oferta
+                </label>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  name="isNew"
+                  checked={form.isNew || false}
+                  onChange={handleChange}
+                  className="w-5 h-5 rounded border-amaretto-gray-light text-amaretto-pink focus:ring-2 focus:ring-amaretto-pink"
+                />
+                <label className="text-sm font-sans font-medium text-amaretto-black">
+                  Producto nuevo (mostrar badge "NEW")
                 </label>
               </div>
               {form.isOnSale && (

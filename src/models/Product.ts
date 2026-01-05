@@ -16,6 +16,7 @@ export interface IProduct extends Document {
   medidas: string
   cierre: string
   featured?: boolean
+  isNew?: boolean
   createdAt: Date
   updatedAt: Date
 }
@@ -44,6 +45,7 @@ const ProductSchema = new Schema<IProduct>(
     medidas: { type: String, default: '' },
     cierre: { type: String, default: '' },
     featured: { type: Boolean, default: false },
+    isNew: { type: Boolean, default: false },
   },
   {
     timestamps: true,

@@ -121,10 +121,17 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
 
             {/* Información */}
             <div className="space-y-6">
-              {/* Categoría */}
-              <p className="text-sm text-amaretto-black/60 font-sans uppercase tracking-wide">
-                {product.category}
-              </p>
+              {/* Categoría y Badge NEW */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <p className="text-sm text-amaretto-black/60 font-sans uppercase tracking-wide">
+                  {product.category}
+                </p>
+                {product.isNew && (
+                  <span className="bg-amaretto-pink text-white px-3 py-1 rounded-full text-xs font-sans font-bold">
+                    NEW
+                  </span>
+                )}
+              </div>
 
               {/* Nombre */}
               <h1 className="font-serif text-3xl md:text-4xl font-bold text-amaretto-black">

@@ -119,6 +119,7 @@ export async function PUT(
         medidas: body.medidas || '',
         cierre: body.cierre || '',
         featured: body.featured || false,
+        isNew: body.isNew || false,
       }
 
       if (body.isOnSale) {
@@ -168,6 +169,7 @@ export async function PUT(
         medidas: body.medidas || '',
         cierre: body.cierre || '',
         featured: body.featured || false,
+        isNew: body.isNew || false,
       }
 
       if (body.isOnSale) {

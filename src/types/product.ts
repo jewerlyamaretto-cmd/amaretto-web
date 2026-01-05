@@ -15,5 +15,6 @@ export interface ProductDTO {
   medidas: string
   cierre: string
   featured?: boolean
+  isNew?: boolean
 }
 

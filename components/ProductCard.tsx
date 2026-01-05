@@ -11,6 +11,11 @@ export default function ProductCard({ product }: ProductCardProps) {
       <div className="bg-amaretto-white border border-amaretto-gray-light rounded-lg overflow-hidden hover:shadow-lg transition-shadow duration-300">
         {/* Imagen del producto */}
         <div className="relative w-full h-64 bg-amaretto-beige overflow-hidden">
+          {product.isNew && (
+            <div className="absolute top-2 right-2 z-10 bg-amaretto-pink text-white px-3 py-1 rounded-full text-xs font-sans font-bold shadow-lg">
+              NEW
+            </div>
+          )}
           {product.images && product.images[0] ? (
             <img
               src={product.images[0]}

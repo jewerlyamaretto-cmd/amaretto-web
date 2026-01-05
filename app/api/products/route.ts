@@ -128,6 +128,7 @@ export async function POST(request: NextRequest) {
       medidas: body.medidas || '',
       cierre: body.cierre || '',
       featured: body.featured || false,
+      isNew: body.isNew || false,
     }
 
     // Agregar campos de oferta solo si están presentes
