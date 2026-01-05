@@ -35,34 +35,104 @@ async function getProductsForHero() {
   }
 }
 
+async function getHomepageFeatured() {
+  try {
+    await connectToDatabase()
+    const { HomepageFeatured } = await import('@/src/models/HomepageFeatured')
+    const featured = await HomepageFeatured.findOne().lean()
+    
+    if (!featured) {
+      return null
+    }
+
+    return {
+      ringsProductId: featured.ringsProductId || undefined,
+      earringsProductId: featured.earringsProductId || undefined,
+      necklacesProductId: featured.necklacesProductId || undefined,
+      braceletsProductId: featured.braceletsProductId || undefined,
+    }
+  } catch (error) {
+    console.error('Error al obtener productos destacados:', error)
+    return null
+  }
+}
+
+async function getFeaturedProducts(featuredIds: {
+  ringsProductId?: string
+  earringsProductId?: string
+  necklacesProductId?: string
+  braceletsProductId?: string
+}) {
+  try {
+    await connectToDatabase()
+    const productIds = [
+      featuredIds.ringsProductId,
+      featuredIds.earringsProductId,
+      featuredIds.necklacesProductId,
+      featuredIds.braceletsProductId,
+    ].filter((id): id is string => !!id)
+
+    if (productIds.length === 0) {
+      return {}
+    }
+
+    const products = await Product.find({ _id: { $in: productIds } }).lean()
+    const productsMap: Record<string, ProductDTO> = {}
+
+    products.forEach((product) => {
+      const productDto = JSON.parse(JSON.stringify(product)) as ProductDTO
+      productsMap[product._id.toString()] = productDto
+    })
+
+    return {
+      rings: featuredIds.ringsProductId ? productsMap[featuredIds.ringsProductId] : null,
+      earrings: featuredIds.earringsProductId ? productsMap[featuredIds.earringsProductId] : null,
+      necklaces: featuredIds.necklacesProductId ? productsMap[featuredIds.necklacesProductId] : null,
+      bracelets: featuredIds.braceletsProductId ? productsMap[featuredIds.braceletsProductId] : null,
+    }
+  } catch (error) {
+    console.error('Error al obtener productos destacados:', error)
+    return {}
+  }
+}
+
 export default async function Home() {
   const settings = await getSettings()
   // Siempre obtener productos para el hero de fondo
   const heroProducts = await getProductsForHero()
+  
+  // Obtener productos destacados
+  const featuredIds = await getHomepageFeatured()
+  const featuredProducts = featuredIds ? await getFeaturedProducts(featuredIds) : {}
+
   const collections = [
     {
       name: 'Anillos',
       description: 'Anillos elegantes en acero inoxidable y chapa de oro',
       image: 'anillos',
       href: '/coleccion?categoria=anillos',
+      product: featuredProducts.rings,
     },
     {
       name: 'Aretes',
       description: 'Aretes minimalistas para cada ocasión',
       image: 'aretes',
       href: '/coleccion?categoria=aretes',
+      product: featuredProducts.earrings,
     },
     {
       name: 'Collares',
       description: 'Collares delicados que complementan tu estilo',
       image: 'collares',
       href: '/coleccion?categoria=collares',
+      product: featuredProducts.necklaces,
     },
     {
       name: 'Pulseras',
       description: 'Pulseras versátiles y cómodas',
       image: 'pulseras',
       href: '/coleccion?categoria=pulseras',
+      product: featuredProducts.bracelets,
     },
   ]
 
@@ -135,6 +205,7 @@ export default async function Home() {
                 description={collection.description}
                 image={collection.image}
                 href={collection.href}
+                product={collection.product}
               />
             ))}
           </div>

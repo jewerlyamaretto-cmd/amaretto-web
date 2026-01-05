@@ -90,6 +90,25 @@ export default function AdminPage() {
   const [cloudinaryImages, setCloudinaryImages] = useState<any[]>([])
   const [isLoadingCloudinaryImages, setIsLoadingCloudinaryImages] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [homepageFeatured, setHomepageFeatured] = useState<{
+    ringsProductId?: string
+    earringsProductId?: string
+    necklacesProductId?: string
+    braceletsProductId?: string
+  }>({})
+  const [isLoadingFeatured, setIsLoadingFeatured] = useState(false)
+  const [isSavingFeatured, setIsSavingFeatured] = useState(false)
+  const [productsByCategory, setProductsByCategory] = useState<{
+    Anillos: ProductForm[]
+    Aretes: ProductForm[]
+    Collares: ProductForm[]
+    Pulseras: ProductForm[]
+  }>({
+    Anillos: [],
+    Aretes: [],
+    Collares: [],
+    Pulseras: [],
+  })
 
   async function fetchProducts() {
     setIsLoading(true)
@@ -127,8 +146,70 @@ export default function AdminPage() {
       fetchProducts()
       fetchOrders()
       fetchSettings()
+      fetchHomepageFeatured()
+      fetchProductsByCategory()
     }
   }, [isAuthenticated])
+
+  async function fetchProductsByCategory() {
+    const categories: Array<'Anillos' | 'Aretes' | 'Collares' | 'Pulseras'> = ['Anillos', 'Aretes', 'Collares', 'Pulseras']
+    const categoryProducts: typeof productsByCategory = {
+      Anillos: [],
+      Aretes: [],
+      Collares: [],
+      Pulseras: [],
+    }
+
+    for (const category of categories) {
+      try {
+        const res = await fetch(`/api/products?category=${category}`, { cache: 'no-store' })
+        const data = await res.json()
+        categoryProducts[category] = data || []
+      } catch (err) {
+        console.error(`Error al cargar productos de ${category}:`, err)
+      }
+    }
+
+    setProductsByCategory(categoryProducts)
+  }
+
+  async function fetchHomepageFeatured() {
+    setIsLoadingFeatured(true)
+    try {
+      const res = await fetch('/api/homepage-featured', { cache: 'no-store' })
+      const data = await res.json()
+      setHomepageFeatured(data || {})
+    } catch (err) {
+      console.error(err)
+      setError('No se pudieron cargar los productos destacados')
+    } finally {
+      setIsLoadingFeatured(false)
+    }
+  }
+
+  async function handleSaveHomepageFeatured(e: React.FormEvent) {
+    e.preventDefault()
+    setIsSavingFeatured(true)
+    try {
+      const res = await fetch('/api/homepage-featured', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(homepageFeatured),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al guardar los productos destacados')
+      }
+      await fetchHomepageFeatured()
+      setSuccessMessage('Productos destacados guardados exitosamente')
+      setTimeout(() => setSuccessMessage(null), 3000)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error al guardar los productos destacados'
+      setError(errorMessage)
+    } finally {
+      setIsSavingFeatured(false)
+    }
+  }
 
   async function fetchSettings() {
     setIsSettingsLoading(true)
@@ -1421,6 +1502,140 @@ O si tienes MongoDB local:
                   className="bg-amaretto-black text-white font-sans font-medium px-6 py-3 rounded-lg hover:bg-amaretto-black/90 transition-colors duration-200 disabled:opacity-50"
                 >
                   {isSavingSettings ? 'Guardando...' : 'Guardar Configuración'}
+                </button>
+              </div>
+            </form>
+          )}
+        </section>
+
+        {/* Sección de Productos Destacados */}
+        <section className="bg-white rounded-2xl p-8 shadow-sm border border-amaretto-gray-light/60">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="font-serif text-2xl font-semibold text-amaretto-black">
+                Home &gt; Productos Destacados
+              </h2>
+              <p className="text-sm font-sans text-amaretto-black/70 mt-1">
+                Selecciona un producto destacado para cada categoría que aparecerá en la página de inicio.
+              </p>
+            </div>
+            <button
+              onClick={fetchHomepageFeatured}
+              className="text-sm font-sans text-amaretto-black/70 hover:text-amaretto-pink transition-colors"
+            >
+              Actualizar
+            </button>
+          </div>
+
+          {isLoadingFeatured ? (
+            <p className="text-center text-amaretto-black/60 font-sans">Cargando productos destacados...</p>
+          ) : (
+            <form onSubmit={handleSaveHomepageFeatured} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Anillos */}
+                <div>
+                  <label className="block text-sm font-sans font-medium text-amaretto-black mb-2">
+                    Anillos
+                  </label>
+                  <select
+                    value={homepageFeatured.ringsProductId || ''}
+                    onChange={(e) =>
+                      setHomepageFeatured((prev) => ({
+                        ...prev,
+                        ringsProductId: e.target.value || undefined,
+                      }))
+                    }
+                    className="w-full px-4 py-3 rounded-lg border border-amaretto-gray-light focus:ring-2 focus:ring-amaretto-pink outline-none font-sans bg-white"
+                  >
+                    <option value="">Seleccionar producto...</option>
+                    {productsByCategory.Anillos.map((product) => (
+                      <option key={product._id} value={product._id}>
+                        {product.name} {product.price > 0 ? `($${product.price.toLocaleString('es-MX')} MXN)` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Aretes */}
+                <div>
+                  <label className="block text-sm font-sans font-medium text-amaretto-black mb-2">
+                    Aretes
+                  </label>
+                  <select
+                    value={homepageFeatured.earringsProductId || ''}
+                    onChange={(e) =>
+                      setHomepageFeatured((prev) => ({
+                        ...prev,
+                        earringsProductId: e.target.value || undefined,
+                      }))
+                    }
+                    className="w-full px-4 py-3 rounded-lg border border-amaretto-gray-light focus:ring-2 focus:ring-amaretto-pink outline-none font-sans bg-white"
+                  >
+                    <option value="">Seleccionar producto...</option>
+                    {productsByCategory.Aretes.map((product) => (
+                      <option key={product._id} value={product._id}>
+                        {product.name} {product.price > 0 ? `($${product.price.toLocaleString('es-MX')} MXN)` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Collares */}
+                <div>
+                  <label className="block text-sm font-sans font-medium text-amaretto-black mb-2">
+                    Collares
+                  </label>
+                  <select
+                    value={homepageFeatured.necklacesProductId || ''}
+                    onChange={(e) =>
+                      setHomepageFeatured((prev) => ({
+                        ...prev,
+                        necklacesProductId: e.target.value || undefined,
+                      }))
+                    }
+                    className="w-full px-4 py-3 rounded-lg border border-amaretto-gray-light focus:ring-2 focus:ring-amaretto-pink outline-none font-sans bg-white"
+                  >
+                    <option value="">Seleccionar producto...</option>
+                    {productsByCategory.Collares.map((product) => (
+                      <option key={product._id} value={product._id}>
+                        {product.name} {product.price > 0 ? `($${product.price.toLocaleString('es-MX')} MXN)` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Pulseras */}
+                <div>
+                  <label className="block text-sm font-sans font-medium text-amaretto-black mb-2">
+                    Pulseras
+                  </label>
+                  <select
+                    value={homepageFeatured.braceletsProductId || ''}
+                    onChange={(e) =>
+                      setHomepageFeatured((prev) => ({
+                        ...prev,
+                        braceletsProductId: e.target.value || undefined,
+                      }))
+                    }
+                    className="w-full px-4 py-3 rounded-lg border border-amaretto-gray-light focus:ring-2 focus:ring-amaretto-pink outline-none font-sans bg-white"
+                  >
+                    <option value="">Seleccionar producto...</option>
+                    {productsByCategory.Pulseras.map((product) => (
+                      <option key={product._id} value={product._id}>
+                        {product.name} {product.price > 0 ? `($${product.price.toLocaleString('es-MX')} MXN)` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4 border-t border-amaretto-gray-light">
+                <button
+                  type="submit"
+                  disabled={isSavingFeatured}
+                  className="bg-amaretto-black text-white font-sans font-medium px-6 py-3 rounded-lg hover:bg-amaretto-black/90 transition-colors duration-200 disabled:opacity-50"
+                >
+                  {isSavingFeatured ? 'Guardando...' : 'Guardar Productos Destacados'}
                 </button>
               </div>
             </form>
