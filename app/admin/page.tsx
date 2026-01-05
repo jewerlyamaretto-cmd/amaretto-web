@@ -430,6 +430,56 @@ O si tienes MongoDB local:
     setProductImages((prev) => prev.filter((_, i) => i !== index))
   }
 
+  const fetchCloudinaryImages = async () => {
+    setIsLoadingCloudinaryImages(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/cloudinary/list')
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setCloudinaryImages(data.images || [])
+      } else {
+        setError(data.error || 'Error al cargar imágenes de Cloudinary')
+      }
+    } catch (err) {
+      console.error(err)
+      setError('Error al cargar imágenes de Cloudinary')
+    } finally {
+      setIsLoadingCloudinaryImages(false)
+    }
+  }
+
+  const handleOpenCloudinaryGallery = () => {
+    setShowCloudinaryGallery(true)
+    if (cloudinaryImages.length === 0) {
+      fetchCloudinaryImages()
+    }
+  }
+
+  const handleSelectCloudinaryImage = (image: any) => {
+    if (productImages.length >= 5) {
+      setError('Máximo 5 imágenes permitidas')
+      return
+    }
+    
+    const imageUrl = image.secure_url
+    
+    if (!imageUrl) {
+      setError('No se pudo obtener la URL de la imagen')
+      return
+    }
+    
+    if (productImages.includes(imageUrl)) {
+      setError('Esta imagen ya está seleccionada')
+      return
+    }
+    
+    setProductImages((prev) => [...prev, imageUrl])
+    setError(null)
+    setSuccessMessage('Imagen agregada exitosamente')
+    setTimeout(() => setSuccessMessage(null), 3000)
+  }
+
   const handleDelete = async (id: string) => {
     if (!confirm('¿Deseas eliminar este producto?')) return
     try {
