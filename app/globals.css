@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-amaretto-white text-amaretto-black;
+  }
+}
+
+@layer utilities {
+  .bg-amaretto-beige {
+    @apply bg-[#E3DFD7];
+  }
+  
+  .bg-amaretto-gray-light {
+    @apply bg-[#D9D9D9];
+  }
+  
+  .bg-amaretto-pink {
+    @apply bg-[#EFA4CC];
+  }
+  
+  .bg-amaretto-gold {
+    @apply bg-[#D4AF37];
+  }
+  
+  .text-amaretto-pink {
+    @apply text-[#EFA4CC];
+  }
+  
+  .text-amaretto-gold {
+    @apply text-[#D4AF37];
+  }
+  
+  .text-amaretto-black {
+    @apply text-[#000000];
+  }
+  
+  .border-amaretto-pink {
+    @apply border-[#EFA4CC];
+  }
+  
+  .border-amaretto-gold {
+    @apply border-[#D4AF37];
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+
