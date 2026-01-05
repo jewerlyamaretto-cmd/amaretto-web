@@ -51,7 +51,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [items, isMounted])
 
-  const addItem = (product: Product, quantity: number = 1) => {
+  const addItem = (product: ProductDTO, quantity: number = 1) => {
     setItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.product._id === product._id)
 

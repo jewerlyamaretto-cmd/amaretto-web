@@ -133,11 +133,14 @@ export async function PUT(request: NextRequest) {
           { status: 500 }
         )
       }
-    } else {
+    }
+    
+    // Verificar que settings existe antes de actualizar
+    if (settings) {
       // Actualizar solo los campos que vienen en el body
       Object.keys(body).forEach((key) => {
         if (body[key] !== undefined) {
-          settings[key] = body[key]
+          ;(settings as any)[key] = body[key]
         }
       })
       
