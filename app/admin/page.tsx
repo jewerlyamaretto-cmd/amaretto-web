@@ -700,7 +700,7 @@ O si tienes MongoDB local:
                   className="w-5 h-5 rounded border-amaretto-gray-light text-amaretto-pink focus:ring-2 focus:ring-amaretto-pink"
                 />
                 <label className="text-sm font-sans font-medium text-amaretto-black">
-                  Producto nuevo (mostrar badge "NEW")
+                  Producto nuevo (mostrar badge &ldquo;NEW&rdquo;)
                 </label>
               </div>
               {form.isOnSale && (
