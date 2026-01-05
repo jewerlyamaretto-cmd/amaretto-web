@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import ProductImage from './ProductImage'
 import { ProductDTO } from '@/src/types/product'
 
 interface HeroProductCarouselProps {
@@ -11,20 +10,30 @@ interface HeroProductCarouselProps {
 
 export default function HeroProductCarousel({ products }: HeroProductCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [fade, setFade] = useState(true)
+
+  // Filtrar productos que tengan al menos una imagen
+  const productsWithImages = products.filter(
+    (product) => product.images && product.images.length > 0 && product.images[0]
+  )
 
   useEffect(() => {
     // Si solo hay un producto, no rotar
-    if (products.length <= 1) return
+    if (productsWithImages.length <= 1) return
 
-    // Rotar cada 5 segundos
+    // Rotar cada 5 segundos con transición fade
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % products.length)
+      setFade(false)
+      setTimeout(() => {
+        setCurrentIndex((prev) => (prev + 1) % productsWithImages.length)
+        setFade(true)
+      }, 500) // Tiempo de transición
     }, 5000)
 
     return () => clearInterval(interval)
-  }, [products.length])
+  }, [productsWithImages.length])
 
-  if (products.length === 0) {
+  if (productsWithImages.length === 0) {
     return (
       <div className="relative w-full h-96 bg-amaretto-beige rounded-lg flex items-center justify-center">
         <p className="text-amaretto-black/30 font-sans text-sm">
@@ -34,7 +43,7 @@ export default function HeroProductCarousel({ products }: HeroProductCarouselPro
     )
   }
 
-  const currentProduct = products[currentIndex]
+  const currentProduct = productsWithImages[currentIndex]
 
   return (
     <div className="relative w-full h-96 bg-amaretto-beige rounded-lg overflow-hidden">
@@ -43,11 +52,13 @@ export default function HeroProductCarousel({ products }: HeroProductCarouselPro
           href={`/producto/${currentProduct.slug}`} 
           className="block w-full h-full group"
         >
-          <div className="w-full h-96 bg-amaretto-beige">
+          <div className="w-full h-96 bg-amaretto-beige relative">
             <img
               src={currentProduct.images[0]}
               alt={currentProduct.name}
-              className="w-full h-full object-contain"
+              className={`w-full h-full object-contain transition-opacity duration-500 ease-in-out ${
+                fade ? 'opacity-100' : 'opacity-0'
+              }`}
               onError={(e) => {
                 e.currentTarget.style.display = 'none'
                 const parent = e.currentTarget.parentElement
@@ -80,14 +91,18 @@ export default function HeroProductCarousel({ products }: HeroProductCarouselPro
           </div>
           
           {/* Indicadores de productos (si hay más de uno) */}
-          {products.length > 1 && (
+          {productsWithImages.length > 1 && (
             <div className="absolute top-4 right-4 flex gap-2">
-              {products.map((_, index) => (
+              {productsWithImages.map((_, index) => (
                 <button
                   key={index}
                   onClick={(e) => {
                     e.preventDefault()
-                    setCurrentIndex(index)
+                    setFade(false)
+                    setTimeout(() => {
+                      setCurrentIndex(index)
+                      setFade(true)
+                    }, 500)
                   }}
                   className={`w-2 h-2 rounded-full transition-all ${
                     index === currentIndex
