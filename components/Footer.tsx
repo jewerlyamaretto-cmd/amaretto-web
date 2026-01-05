@@ -39,6 +39,14 @@ export default function Footer() {
               </li>
               <li>
                 <Link
+                  href="/nuevo"
+                  className="text-sm text-amaretto-black/70 hover:text-amaretto-pink transition-colors duration-200 font-semibold"
+                >
+                  Nuevo
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/nosotros"
                   className="text-sm text-amaretto-black/70 hover:text-amaretto-pink transition-colors duration-200"
                 >

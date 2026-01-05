@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
     const search = searchParams.get('search')
+    const isNew = searchParams.get('isNew') === 'true'
 
     let products
     
@@ -46,6 +47,9 @@ export async function GET(request: NextRequest) {
       const filters: Record<string, unknown> = {}
       if (category && category !== 'Todas') {
         filters.category = category
+      }
+      if (isNew) {
+        filters.isNew = true
       }
       if (search) {
         filters.$or = [
@@ -61,6 +65,9 @@ export async function GET(request: NextRequest) {
     if (useFileStorage) {
       if (category && category !== 'Todas') {
         products = products.filter(p => p.category === category)
+      }
+      if (isNew) {
+        products = products.filter((p: any) => p.isNew === true)
       }
       if (search) {
         const searchLower = search.toLowerCase()
