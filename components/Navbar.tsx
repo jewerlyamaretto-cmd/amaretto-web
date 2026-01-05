@@ -32,12 +32,6 @@ export default function Navbar() {
               Colección
             </Link>
             <Link
-              href="/nuevo"
-              className="text-amaretto-black hover:text-amaretto-pink transition-colors duration-200 font-semibold"
-            >
-              Nuevo
-            </Link>
-            <Link
               href="/nosotros"
               className="text-amaretto-black hover:text-amaretto-pink transition-colors duration-200"
             >
@@ -126,13 +120,6 @@ export default function Navbar() {
                 onClick={() => setIsMenuOpen(false)}
               >
                 Colección
-              </Link>
-              <Link
-                href="/nuevo"
-                className="text-amaretto-black hover:text-amaretto-pink transition-colors duration-200 font-semibold"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Nuevo
               </Link>
               <Link
                 href="/nosotros"

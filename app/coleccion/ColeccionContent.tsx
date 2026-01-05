@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import ProductCard from '@/components/ProductCard'
 import { ProductDTO } from '@/src/types/product'
 
-const categories = ['Todas', 'Anillos', 'Aretes', 'Collares', 'Pulseras']
+const categories = ['Todas', 'Nuevo', 'Anillos', 'Aretes', 'Collares', 'Pulseras']
 const productsPerPage = 24
 
 export default function ColeccionContent() {
@@ -65,7 +65,14 @@ export default function ColeccionContent() {
 
   // Filtrar productos
   const filteredProducts = products.filter((product) => {
-    const matchesCategory = selectedCategory === 'Todas' || product.category === selectedCategory
+    let matchesCategory = false
+    if (selectedCategory === 'Todas') {
+      matchesCategory = true
+    } else if (selectedCategory === 'Nuevo') {
+      matchesCategory = product.isNew === true
+    } else {
+      matchesCategory = product.category === selectedCategory
+    }
     const matchesPrice = product.price >= priceRange.min && product.price <= priceRange.max
     return matchesCategory && matchesPrice
   })
