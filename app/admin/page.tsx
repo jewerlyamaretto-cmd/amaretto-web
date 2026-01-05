@@ -425,10 +425,15 @@ O si tienes MongoDB local:
       }
 
       // Actualizar estado de forma síncrona
+      console.log('🔄 ANTES de setProductImages. Estado actual:', productImages)
+      console.log('🔄 URLs a agregar:', validUrls)
+      
       setProductImages((prev) => {
         const newImages = [...prev, ...validUrls]
-        console.log('✅ Estado actualizado. Total imágenes:', newImages.length)
-        console.log('✅ URLs en estado:', newImages)
+        console.log('✅✅✅ setProductImages ejecutado')
+        console.log('✅ Estado anterior:', prev)
+        console.log('✅ Nuevo estado:', newImages)
+        console.log('✅ Total de imágenes:', newImages.length)
         return newImages
       })
 
@@ -800,26 +805,34 @@ O si tienes MongoDB local:
                       </p>
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                         {productImages.map((image, index) => {
-                          if (!image || typeof image !== 'string') {
+                          if (!image) {
+                            console.warn('⚠️ Imagen vacía en índice:', index)
                             return null
                           }
                           
-                          const imageUrl = image.trim()
+                          const imageUrl = String(image).trim()
+                          console.log(`🖼️ Renderizando imagen ${index + 1}:`, imageUrl)
                           
                           return (
-                            <div key={`img-${index}-${Date.now()}`} className="relative group">
-                              <div className="w-full h-24 rounded-lg border-2 border-amaretto-gray-light overflow-hidden bg-white">
+                            <div key={`product-img-${index}-${imageUrl.substring(0, 20)}`} className="relative group">
+                              <div className="w-full h-24 rounded-lg border-2 border-amaretto-gray-light overflow-hidden bg-gray-100">
                                 <img
                                   src={imageUrl}
                                   alt={`Imagen ${index + 1}`}
                                   className="w-full h-full object-cover"
-                                  style={{ display: 'block' }}
                                   onError={(e) => {
-                                    console.error('❌ Error cargando:', imageUrl)
-                                    e.currentTarget.style.display = 'none'
+                                    console.error('❌ ERROR cargando imagen:', imageUrl)
+                                    console.error('❌ Error details:', e)
+                                    const img = e.currentTarget
+                                    img.style.backgroundColor = '#fee2e2'
+                                    img.style.display = 'flex'
+                                    img.style.alignItems = 'center'
+                                    img.style.justifyContent = 'center'
+                                    img.alt = 'Error al cargar'
                                   }}
-                                  onLoad={() => {
-                                    console.log('✅ Imagen cargada:', imageUrl)
+                                  onLoad={(e) => {
+                                    console.log('✅✅✅ IMAGEN CARGADA EXITOSAMENTE:', imageUrl)
+                                    console.log('✅ Dimensiones:', e.currentTarget.naturalWidth, 'x', e.currentTarget.naturalHeight)
                                   }}
                                 />
                               </div>
