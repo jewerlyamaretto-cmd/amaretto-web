@@ -4,22 +4,20 @@ import { Product } from '@/src/models/Product'
 import mongoose from 'mongoose'
 import * as fileStorage from '@/src/lib/fileStorage'
 
-// Función helper para normalizar URLs de imágenes
-const normalizeImageUrl = (imageUrl: string | undefined | null): string | null => {
+// Función helper para validar URLs de imágenes
+const validateImageUrl = (imageUrl: string | undefined | null): string | null => {
   if (!imageUrl || typeof imageUrl !== 'string') {
     return null
   }
   
   const url = imageUrl.trim()
   
-  // Si ya es una URL completa (http/https), retornarla
+  // Solo aceptar URLs completas (http/https)
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return url
   }
   
-  // Si es un public_id, construir la URL completa
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || 'dtoa33cb1'
-  return `https://res.cloudinary.com/${cloudName}/image/upload/${url}`
+  return null
 }
 
 export async function GET(
@@ -114,7 +112,7 @@ export async function PUT(
         category: body.category || 'Anillos',
         tags: Array.isArray(body.tags) ? body.tags : [],
         images: Array.isArray(body.images) 
-          ? body.images.map((img: any) => normalizeImageUrl(img)).filter((img: string | null): img is string => img !== null)
+          ? body.images.map((img: any) => validateImageUrl(img)).filter((img: string | null): img is string => img !== null)
           : [],
         stock: Number(body.stock) || 0,
         material: body.material || '',
@@ -163,7 +161,7 @@ export async function PUT(
         category: body.category || 'Anillos',
         tags: Array.isArray(body.tags) ? body.tags : [],
         images: Array.isArray(body.images) 
-          ? body.images.map((img: any) => normalizeImageUrl(img)).filter((img: string | null): img is string => img !== null)
+          ? body.images.map((img: any) => validateImageUrl(img)).filter((img: string | null): img is string => img !== null)
           : [],
         stock: Number(body.stock) || 0,
         material: body.material || '',

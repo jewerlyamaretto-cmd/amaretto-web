@@ -3,22 +3,20 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-// Función helper para normalizar URLs de imágenes
-const normalizeImageUrl = (imageUrl: string | undefined | null): string | null => {
+// Función helper para validar URLs de imágenes
+const validateImageUrl = (imageUrl: string | undefined | null): string | null => {
   if (!imageUrl || typeof imageUrl !== 'string') {
     return null
   }
   
   const url = imageUrl.trim()
   
-  // Si ya es una URL completa (http/https), retornarla
+  // Solo aceptar URLs completas (http/https)
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return url
   }
   
-  // Si es un public_id, construir la URL completa
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dtoa33cb1'
-  return `https://res.cloudinary.com/${cloudName}/image/upload/${url}`
+  return null
 }
 
 const emptyProduct = {
@@ -97,11 +95,6 @@ export default function AdminPage() {
   const [isSettingsLoading, setIsSettingsLoading] = useState(false)
   const [isSavingSettings, setIsSavingSettings] = useState(false)
   const [productImages, setProductImages] = useState<string[]>([])
-  const [forceUpdate, setForceUpdate] = useState(0)
-  const [isUploadingImages, setIsUploadingImages] = useState(false)
-  const [showCloudinaryGallery, setShowCloudinaryGallery] = useState(false)
-  const [cloudinaryImages, setCloudinaryImages] = useState<any[]>([])
-  const [isLoadingCloudinaryImages, setIsLoadingCloudinaryImages] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   async function fetchProducts() {
@@ -308,9 +301,9 @@ O si tienes MongoDB local:
         category: form.category,
         tags: form.tags ? form.tags.split(',').map((tag) => tag.trim()).filter(tag => tag) : [],
         images: productImages.length > 0 
-          ? productImages.map(img => normalizeImageUrl(img)).filter((img): img is string => img !== null)
+          ? productImages.filter(img => validateImageUrl(img) !== null)
           : (form.images 
-              ? form.images.split(',').map((img) => normalizeImageUrl(img.trim())).filter((img): img is string => img !== null)
+              ? form.images.split(',').map((img) => validateImageUrl(img.trim())).filter((img): img is string => img !== null)
               : []),
         stock: Number(form.stock) || 0,
         material: form.material || '',
@@ -375,19 +368,19 @@ O si tienes MongoDB local:
   }
 
   const handleEdit = (product: ProductForm) => {
-    // Normalizar todas las URLs de imágenes
+    // Cargar URLs de imágenes válidas
     const imagesArray = product.images 
       ? (Array.isArray(product.images) 
           ? product.images 
           : String(product.images).split(',').map(img => img.trim()).filter(img => img))
-        .map(img => normalizeImageUrl(img))
+        .map(img => validateImageUrl(img))
         .filter((img): img is string => img !== null)
       : []
     
     setForm({
       ...product,
       tags: product.tags ? (Array.isArray(product.tags) ? product.tags.join(', ') : String(product.tags)) : '',
-      images: '',
+      images: product.images ? (Array.isArray(product.images) ? product.images.join(', ') : String(product.images)) : '',
       originalPrice: product.originalPrice || 0,
       discountPrice: product.discountPrice || 0,
       isOnSale: product.isOnSale || false,
@@ -396,140 +389,40 @@ O si tienes MongoDB local:
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || files.length === 0) return
-
-    // Validar cantidad máxima
-    if (productImages.length + files.length > 5) {
-      setError('Máximo 5 imágenes permitidas')
+  const handleAddImageFromInput = () => {
+    if (!form.images || form.images.trim() === '') {
+      setError('Ingresa al menos una URL de imagen')
       return
     }
 
-    setIsUploadingImages(true)
-    setError(null)
+    const urls = form.images
+      .split(',')
+      .map(url => url.trim())
+      .filter(url => url.length > 0)
+      .map(url => validateImageUrl(url))
+      .filter((url): url is string => url !== null)
 
-    try {
-      const formData = new FormData()
-      Array.from(files).forEach((file) => {
-        formData.append('files', file)
-      })
-
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      })
-
-      const data = await res.json()
-      console.log('📥 RESPUESTA COMPLETA DEL SERVIDOR:', data)
-      console.log('📥 data.files:', data.files)
-      console.log('📥 Tipo de data.files:', Array.isArray(data.files))
-
-      if (!res.ok) {
-        console.error('❌ Error en la respuesta:', data)
-        throw new Error(data.error || 'Error al subir las imágenes')
-      }
-
-      // Verificar respuesta
-      if (!data || !data.files || !Array.isArray(data.files) || data.files.length === 0) {
-        console.error('❌ Respuesta inválida:', data)
-        throw new Error('No se recibieron imágenes del servidor')
-      }
-
-      // Filtrar URLs válidas
-      const newUrls = data.files
-        .filter((url: any) => {
-          const isValid = url && typeof url === 'string' && url.trim().startsWith('http')
-          if (!isValid) {
-            console.warn('⚠️ URL descartada:', url, 'Tipo:', typeof url)
-          }
-          return isValid
-        })
-        .map((url: string) => url.trim())
-      
-      console.log('✅ URLs válidas después de filtrar:', newUrls)
-      console.log('✅ Cantidad de URLs válidas:', newUrls.length)
-      
-      if (newUrls.length === 0) {
-        console.error('❌ No hay URLs válidas')
-        throw new Error('Las URLs recibidas no son válidas')
-      }
-
-      // Actualizar estado de forma directa
-      const currentImages = [...productImages, ...newUrls]
-      setProductImages(currentImages)
-      
-      // Forzar re-render completo
-      setForceUpdate(prev => prev + 1)
-      
-      // Forzar re-render después de un pequeño delay para asegurar
-      setTimeout(() => {
-        setProductImages([...currentImages])
-        setForceUpdate(prev => prev + 1)
-      }, 100)
-      
-      setSuccessMessage(`${newUrls.length} imagen(es) subida(s) exitosamente`)
-      setTimeout(() => setSuccessMessage(null), 4000)
-      
-      e.target.value = '' // Limpiar input
-    } catch (err) {
-      console.error(err)
-      setError(err instanceof Error ? err.message : 'Error al subir las imágenes')
-    } finally {
-      setIsUploadingImages(false)
+    if (urls.length === 0) {
+      setError('No se encontraron URLs válidas. Las URLs deben comenzar con http:// o https://')
+      return
     }
+
+    const totalImages = productImages.length + urls.length
+    if (totalImages > 5) {
+      setError(`Máximo 5 imágenes permitidas. Ya tienes ${productImages.length} y estás intentando agregar ${urls.length}`)
+      return
+    }
+
+    // Agregar nuevas URLs al estado
+    setProductImages(prev => [...prev, ...urls])
+    setForm(prev => ({ ...prev, images: '' }))
+    setError(null)
+    setSuccessMessage(`${urls.length} imagen(es) agregada(s) exitosamente`)
+    setTimeout(() => setSuccessMessage(null), 4000)
   }
 
   const handleRemoveImage = (index: number) => {
     setProductImages((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  const fetchCloudinaryImages = async () => {
-    setIsLoadingCloudinaryImages(true)
-    try {
-      const res = await fetch('/api/cloudinary/list')
-      const data = await res.json()
-      if (res.ok && data.success) {
-        setCloudinaryImages(data.images || [])
-      } else {
-        setError(data.error || 'Error al cargar imágenes de Cloudinary')
-      }
-    } catch (err) {
-      console.error(err)
-      setError('Error al cargar imágenes de Cloudinary')
-    } finally {
-      setIsLoadingCloudinaryImages(false)
-    }
-  }
-
-  const handleOpenCloudinaryGallery = () => {
-    setShowCloudinaryGallery(true)
-    if (cloudinaryImages.length === 0) {
-      fetchCloudinaryImages()
-    }
-  }
-
-  const handleSelectCloudinaryImage = (image: any) => {
-    if (productImages.length >= 5) {
-      setError('Máximo 5 imágenes permitidas')
-      return
-    }
-    
-    // Asegurar que siempre usamos secure_url
-    const imageUrl = image.secure_url || (image.public_id ? normalizeImageUrl(image.public_id) : null)
-    
-    if (!imageUrl) {
-      setError('No se pudo obtener la URL de la imagen')
-      return
-    }
-    
-    if (productImages.includes(imageUrl)) {
-      setError('Esta imagen ya está seleccionada')
-      return
-    }
-    
-    setProductImages((prev) => [...prev, imageUrl])
-    setError(null)
   }
 
   const handleDelete = async (id: string) => {
@@ -813,248 +706,81 @@ O si tienes MongoDB local:
                     Imágenes del producto (1-5 imágenes)
                   </label>
                   
-                  {/* Opciones: Subir nuevas o seleccionar de Cloudinary */}
+                  {/* Input para agregar URLs */}
                   <div className="flex gap-2 mb-3">
-                    <label className="flex-1 px-4 py-2 bg-amaretto-pink text-white rounded-lg cursor-pointer hover:bg-amaretto-pink/90 transition-colors text-center font-sans text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
-                      Subir nuevas imágenes
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/svg+xml,image/bmp,image/tiff,image/ico,image/heic,image/heif,image/avif"
-                        multiple
-                        onChange={handleImageUpload}
-                        disabled={isUploadingImages || productImages.length >= 5}
-                        className="hidden"
-                      />
-                    </label>
+                    <input
+                      name="images"
+                      value={form.images}
+                      onChange={handleChange}
+                      className="flex-1 px-4 py-2 text-sm rounded-lg border border-amaretto-gray-light focus:ring-2 focus:ring-amaretto-pink outline-none font-sans"
+                      placeholder="https://ejemplo.com/imagen1.jpg, https://ejemplo.com/imagen2.jpg"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          handleAddImageFromInput()
+                        }
+                      }}
+                    />
                     <button
                       type="button"
-                      onClick={handleOpenCloudinaryGallery}
-                      disabled={productImages.length >= 5}
-                      className="flex-1 px-4 py-2 bg-amaretto-black text-white rounded-lg hover:bg-amaretto-black/90 transition-colors font-sans text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={handleAddImageFromInput}
+                      disabled={productImages.length >= 5 || !form.images.trim()}
+                      className="px-4 py-2 bg-amaretto-pink text-white rounded-lg hover:bg-amaretto-pink/90 transition-colors font-sans text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Seleccionar de Cloudinary
+                      Agregar
                     </button>
                   </div>
                   
-                  {isUploadingImages && (
-                    <p className="text-sm text-amaretto-black/60 mt-2">Subiendo imágenes...</p>
-                  )}
                   {productImages.length > 0 && (
                     <div className="mt-4 space-y-4">
                       <p className="text-sm font-sans font-medium text-amaretto-black mb-2">
                         Vista previa de imágenes ({productImages.length}/5):
                       </p>
-                      <div key={`images-container-${forceUpdate}`} className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                        {productImages && productImages.length > 0 ? (
-                          productImages.map((imageUrl, index) => {
-                            if (!imageUrl) return null
-                            
-                            const url = String(imageUrl).trim()
-                            
-                            return (
-                              <div 
-                                key={`img-${index}-${forceUpdate}-${url}`} 
-                                className="relative group"
-                              >
-                                <div className="w-full h-24 rounded-lg border-2 border-amaretto-gray-light overflow-hidden bg-white">
-                                  <img
-                                    src={url}
-                                    alt={`Imagen ${index + 1}`}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      e.currentTarget.style.display = 'none'
-                                    }}
-                                  />
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveImage(index)}
-                                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold z-10 hover:bg-red-600"
-                                  aria-label="Eliminar imagen"
-                                >
-                                  ×
-                                </button>
-                                <span className="absolute bottom-1 left-1 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded font-semibold">
-                                  {index + 1}
-                                </span>
-                              </div>
-                            )
-                          })
-                        ) : (
-                          <p className="text-sm text-amaretto-black/60">No hay imágenes</p>
-                        )}
-                      </div>
-                      <div className="bg-amaretto-beige rounded-lg p-4 space-y-2">
-                        <p className="text-sm font-sans font-medium text-amaretto-black">
-                          URLs de las imágenes (puedes copiarlas):
-                        </p>
-                        <div className="space-y-1">
-                          {productImages.map((image, index) => {
-                            const baseUrl = typeof window !== 'undefined' 
-                              ? window.location.origin 
-                              : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
-                            const imageUrl = image.startsWith('http') 
-                              ? image 
-                              : `${baseUrl}${image}`
-                            
-                            return (
-                              <div key={index} className="flex items-center gap-2">
-                                <span className="text-xs text-amaretto-black/60 font-sans w-6">
-                                  {index + 1}:
-                                </span>
-                                <input
-                                  type="text"
-                                  readOnly
-                                  value={imageUrl}
-                                  className="flex-1 px-2 py-1 text-xs rounded border border-amaretto-gray-light bg-white font-sans"
-                                  onClick={(e) => (e.target as HTMLInputElement).select()}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (navigator.clipboard) {
-                                      navigator.clipboard.writeText(imageUrl)
-                                      alert('URL copiada al portapapeles')
-                                    } else {
-                                      // Fallback para navegadores antiguos
-                                      const input = document.createElement('input')
-                                      input.value = imageUrl
-                                      document.body.appendChild(input)
-                                      input.select()
-                                      document.execCommand('copy')
-                                      document.body.removeChild(input)
-                                      alert('URL copiada al portapapeles')
-                                    }
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        {productImages.map((imageUrl, index) => {
+                          if (!imageUrl) return null
+                          
+                          const url = String(imageUrl).trim()
+                          
+                          return (
+                            <div 
+                              key={`img-${index}-${url}`} 
+                              className="relative group"
+                            >
+                              <div className="w-full h-24 rounded-lg border-2 border-amaretto-gray-light overflow-hidden bg-white">
+                                <img
+                                  src={url}
+                                  alt={`Imagen ${index + 1}`}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none'
                                   }}
-                                  className="text-xs text-amaretto-pink hover:text-amaretto-black transition-colors px-2"
-                                >
-                                  Copiar
-                                </button>
+                                />
                               </div>
-                            )
-                          })}
-                        </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveImage(index)}
+                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold z-10 hover:bg-red-600"
+                                aria-label="Eliminar imagen"
+                              >
+                                ×
+                              </button>
+                              <span className="absolute bottom-1 left-1 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded font-semibold">
+                                {index + 1}
+                              </span>
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
                   )}
+                  
                   <p className="text-xs text-amaretto-black/60 mt-2">
-                    {productImages.length}/5 imágenes. Puedes subir hasta 5 imágenes por producto.
+                    {productImages.length}/5 imágenes. Ingresa URLs completas (http:// o https://) separadas por comas.
                   </p>
-                  <div className="mt-2">
-                    <label className="block text-xs font-sans font-medium text-amaretto-black/70 mb-1">
-                      O ingresa URLs manualmente (separadas por coma):
-                    </label>
-                    <input
-                      name="images"
-                      value={form.images}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 text-sm rounded-lg border border-amaretto-gray-light focus:ring-2 focus:ring-amaretto-pink outline-none font-sans"
-                      placeholder="https://ejemplo.com/imagen1.jpg, https://ejemplo.com/imagen2.jpg"
-                    />
-                  </div>
                 </div>
               </div>
               
-              {/* Modal de Galería de Cloudinary */}
-              {showCloudinaryGallery && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                  <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-                    <div className="flex justify-between items-center p-4 border-b border-amaretto-gray-light">
-                      <h3 className="text-lg font-sans font-semibold text-amaretto-black">
-                        Seleccionar imágenes de Cloudinary
-                      </h3>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowCloudinaryGallery(false)
-                          setError(null)
-                        }}
-                        className="text-amaretto-black hover:text-amaretto-pink transition-colors text-2xl font-bold"
-                      >
-                        ×
-                      </button>
-                    </div>
-                    
-                    <div className="flex-1 overflow-y-auto p-4">
-                      {isLoadingCloudinaryImages ? (
-                        <div className="text-center py-8">
-                          <p className="text-amaretto-black/60 font-sans">Cargando imágenes...</p>
-                        </div>
-                      ) : cloudinaryImages.length === 0 ? (
-                        <div className="text-center py-8">
-                          <p className="text-amaretto-black/60 font-sans">
-                            No hay imágenes en Cloudinary. Sube algunas imágenes primero.
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                          {cloudinaryImages.map((image, index) => {
-                            const isSelected = productImages.includes(image.secure_url)
-                            const canSelect = productImages.length < 5 && !isSelected
-                            
-                            return (
-                              <div
-                                key={index}
-                                className={`relative group cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
-                                  isSelected
-                                    ? 'border-amaretto-pink ring-2 ring-amaretto-pink'
-                                    : canSelect
-                                    ? 'border-amaretto-gray-light hover:border-amaretto-pink'
-                                    : 'border-amaretto-gray-light opacity-50 cursor-not-allowed'
-                                }`}
-                                onClick={() => canSelect && handleSelectCloudinaryImage(image)}
-                              >
-                                <img
-                                  src={image.secure_url}
-                                  alt={`Imagen ${index + 1}`}
-                                  className="w-full h-32 object-cover"
-                                />
-                                {isSelected && (
-                                  <div className="absolute inset-0 bg-amaretto-pink/20 flex items-center justify-center">
-                                    <span className="bg-amaretto-pink text-white px-2 py-1 rounded text-xs font-sans font-medium">
-                                      Seleccionada
-                                    </span>
-                                  </div>
-                                )}
-                                {!canSelect && !isSelected && (
-                                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                    <span className="text-white text-xs font-sans">
-                                      {isSelected ? 'Ya seleccionada' : 'Máximo alcanzado'}
-                                    </span>
-                                  </div>
-                                )}
-                                <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-1 font-sans truncate">
-                                  {image.public_id.split('/').pop()}
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="border-t border-amaretto-gray-light p-4 flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowCloudinaryGallery(false)
-                          setError(null)
-                        }}
-                        className="px-4 py-2 bg-amaretto-gray-light text-amaretto-black rounded-lg hover:bg-amaretto-gray-light/80 transition-colors font-sans"
-                      >
-                        Cerrar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={fetchCloudinaryImages}
-                        className="px-4 py-2 bg-amaretto-pink text-white rounded-lg hover:bg-amaretto-pink/90 transition-colors font-sans"
-                      >
-                        Actualizar lista
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-sans font-medium text-amaretto-black mb-2">Material</label>
