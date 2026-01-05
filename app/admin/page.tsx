@@ -81,6 +81,9 @@ export default function AdminPage() {
   const [isSavingSettings, setIsSavingSettings] = useState(false)
   const [productImages, setProductImages] = useState<string[]>([])
   const [isUploadingImages, setIsUploadingImages] = useState(false)
+  const [showCloudinaryGallery, setShowCloudinaryGallery] = useState(false)
+  const [cloudinaryImages, setCloudinaryImages] = useState<any[]>([])
+  const [isLoadingCloudinaryImages, setIsLoadingCloudinaryImages] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   async function fetchProducts() {
@@ -708,18 +711,28 @@ O si tienes MongoDB local:
                     Imágenes del producto (1-5 imágenes)
                   </label>
                   
-                  {/* Input para subir imágenes */}
-                  <label className="block w-full px-4 py-3 bg-amaretto-pink text-white rounded-lg cursor-pointer hover:bg-amaretto-pink/90 transition-colors text-center font-sans text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed mb-3">
-                    {isUploadingImages ? 'Subiendo imágenes...' : 'Subir imágenes'}
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                      multiple
-                      onChange={handleImageUpload}
-                      disabled={isUploadingImages || productImages.length >= 5}
-                      className="hidden"
-                    />
-                  </label>
+                  {/* Opciones: Subir nuevas o seleccionar de Cloudinary */}
+                  <div className="flex gap-2 mb-3">
+                    <label className="flex-1 px-4 py-3 bg-amaretto-pink text-white rounded-lg cursor-pointer hover:bg-amaretto-pink/90 transition-colors text-center font-sans text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                      {isUploadingImages ? 'Subiendo...' : 'Subir nuevas imágenes'}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                        multiple
+                        onChange={handleImageUpload}
+                        disabled={isUploadingImages || productImages.length >= 5}
+                        className="hidden"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleOpenCloudinaryGallery}
+                      disabled={productImages.length >= 5}
+                      className="flex-1 px-4 py-3 bg-amaretto-black text-white rounded-lg hover:bg-amaretto-black/90 transition-colors font-sans text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Seleccionar de Cloudinary
+                    </button>
+                  </div>
                   
                   {productImages.length > 0 && (
                     <div className="mt-4 space-y-4">
@@ -770,6 +783,107 @@ O si tienes MongoDB local:
                   </p>
                 </div>
               </div>
+              
+              {/* Modal de Galería de Cloudinary */}
+              {showCloudinaryGallery && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                  <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                    <div className="flex justify-between items-center p-4 border-b border-amaretto-gray-light">
+                      <h3 className="text-lg font-sans font-semibold text-amaretto-black">
+                        Seleccionar imágenes de Cloudinary
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowCloudinaryGallery(false)
+                          setError(null)
+                        }}
+                        className="text-amaretto-black hover:text-amaretto-pink transition-colors text-2xl font-bold"
+                      >
+                        ×
+                      </button>
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto p-4">
+                      {isLoadingCloudinaryImages ? (
+                        <div className="text-center py-8">
+                          <p className="text-amaretto-black/60 font-sans">Cargando imágenes...</p>
+                        </div>
+                      ) : cloudinaryImages.length === 0 ? (
+                        <div className="text-center py-8">
+                          <p className="text-amaretto-black/60 font-sans">
+                            No hay imágenes en Cloudinary. Sube algunas imágenes primero.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                          {cloudinaryImages.map((image, index) => {
+                            const isSelected = productImages.includes(image.secure_url)
+                            const canSelect = productImages.length < 5 && !isSelected
+                            
+                            return (
+                              <div
+                                key={index}
+                                className={`relative group cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
+                                  isSelected
+                                    ? 'border-amaretto-pink ring-2 ring-amaretto-pink'
+                                    : canSelect
+                                    ? 'border-amaretto-gray-light hover:border-amaretto-pink'
+                                    : 'border-amaretto-gray-light opacity-50 cursor-not-allowed'
+                                }`}
+                                onClick={() => canSelect && handleSelectCloudinaryImage(image)}
+                              >
+                                <img
+                                  src={image.secure_url}
+                                  alt={`Imagen ${index + 1}`}
+                                  className="w-full h-32 object-cover"
+                                />
+                                {isSelected && (
+                                  <div className="absolute inset-0 bg-amaretto-pink/20 flex items-center justify-center">
+                                    <span className="bg-amaretto-pink text-white px-2 py-1 rounded text-xs font-sans font-medium">
+                                      Seleccionada
+                                    </span>
+                                  </div>
+                                )}
+                                {!canSelect && !isSelected && (
+                                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                    <span className="text-white text-xs font-sans">
+                                      {isSelected ? 'Ya seleccionada' : 'Máximo alcanzado'}
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-1 font-sans truncate">
+                                  {image.public_id.split('/').pop()}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="border-t border-amaretto-gray-light p-4 flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowCloudinaryGallery(false)
+                          setError(null)
+                        }}
+                        className="px-4 py-2 bg-amaretto-gray-light text-amaretto-black rounded-lg hover:bg-amaretto-gray-light/80 transition-colors font-sans"
+                      >
+                        Cerrar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={fetchCloudinaryImages}
+                        className="px-4 py-2 bg-amaretto-pink text-white rounded-lg hover:bg-amaretto-pink/90 transition-colors font-sans"
+                      >
+                        Actualizar lista
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
