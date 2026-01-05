@@ -43,12 +43,20 @@ export default function HeroProductCarousel({ products }: HeroProductCarouselPro
           href={`/producto/${currentProduct.slug}`} 
           className="block w-full h-full group"
         >
-          <ProductImage
-            src={currentProduct.images[0]}
-            alt={currentProduct.name}
-            className="w-full h-96"
-            fallback="Imagen no disponible"
-          />
+          <div className="w-full h-96 bg-amaretto-beige">
+            <img
+              src={currentProduct.images[0]}
+              alt={currentProduct.name}
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+                const parent = e.currentTarget.parentElement
+                if (parent) {
+                  parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-amaretto-black/30 font-sans text-sm">Imagen no disponible</div>'
+                }
+              }}
+            />
+          </div>
           {/* Overlay con información del producto */}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/50 to-transparent p-6">
             <div className="flex items-center justify-between">
