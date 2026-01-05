@@ -413,7 +413,14 @@ O si tienes MongoDB local:
         throw new Error('No se recibieron URLs válidas')
       }
 
-      setProductImages(prev => [...prev, ...newUrls])
+      console.log('✅ URLs recibidas de Cloudinary:', newUrls)
+      
+      setProductImages(prev => {
+        const updated = [...prev, ...newUrls]
+        console.log('✅ Estado actualizado de imágenes:', updated)
+        return updated
+      })
+      
       setSuccessMessage(`${newUrls.length} imagen(es) subida(s) exitosamente`)
       setTimeout(() => setSuccessMessage(null), 4000)
       
@@ -791,22 +798,35 @@ O si tienes MongoDB local:
                       </p>
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                         {productImages.map((imageUrl, index) => {
-                          if (!imageUrl) return null
+                          if (!imageUrl) {
+                            console.warn('⚠️ Imagen vacía en índice:', index)
+                            return null
+                          }
                           
                           const url = String(imageUrl).trim()
+                          console.log(`🖼️ Renderizando imagen ${index + 1}:`, url)
                           
                           return (
                             <div 
-                              key={`img-${index}-${url}`} 
+                              key={`img-${index}-${url.substring(0, 30)}`} 
                               className="relative group"
                             >
-                              <div className="w-full h-24 rounded-lg border-2 border-amaretto-gray-light overflow-hidden bg-white">
+                              <div className="w-full h-24 rounded-lg border-2 border-amaretto-gray-light overflow-hidden bg-gray-100 flex items-center justify-center">
                                 <img
                                   src={url}
                                   alt={`Imagen ${index + 1}`}
                                   className="w-full h-full object-cover"
                                   onError={(e) => {
-                                    e.currentTarget.style.display = 'none'
+                                    console.error('❌ ERROR cargando imagen:', url)
+                                    const img = e.currentTarget
+                                    img.style.display = 'none'
+                                    const parent = img.parentElement
+                                    if (parent) {
+                                      parent.innerHTML = '<div class="text-xs text-red-500 p-2 text-center">Error al cargar</div>'
+                                    }
+                                  }}
+                                  onLoad={(e) => {
+                                    console.log('✅✅✅ IMAGEN CARGADA EXITOSAMENTE:', url)
                                   }}
                                 />
                               </div>
