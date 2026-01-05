@@ -394,32 +394,53 @@ O si tienes MongoDB local:
       })
 
       const data = await res.json()
+      console.log('📥 RESPUESTA COMPLETA DEL SERVIDOR:', data)
+      console.log('📥 data.files:', data.files)
+      console.log('📥 Tipo de data.files:', Array.isArray(data.files))
 
       if (!res.ok) {
+        console.error('❌ Error en la respuesta:', data)
         throw new Error(data.error || 'Error al subir las imágenes')
       }
 
       // Verificar respuesta
       if (!data || !data.files || !Array.isArray(data.files) || data.files.length === 0) {
+        console.error('❌ Respuesta inválida:', data)
         throw new Error('No se recibieron imágenes del servidor')
       }
 
       // Filtrar URLs válidas
       const newUrls = data.files
-        .filter((url: any) => url && typeof url === 'string' && url.trim().startsWith('http'))
+        .filter((url: any) => {
+          const isValid = url && typeof url === 'string' && url.trim().startsWith('http')
+          if (!isValid) {
+            console.warn('⚠️ URL descartada:', url, 'Tipo:', typeof url)
+          }
+          return isValid
+        })
         .map((url: string) => url.trim())
       
+      console.log('✅ URLs válidas después de filtrar:', newUrls)
+      console.log('✅ Cantidad de URLs válidas:', newUrls.length)
+      
       if (newUrls.length === 0) {
+        console.error('❌ No hay URLs válidas')
         throw new Error('Las URLs recibidas no son válidas')
       }
 
+      console.log('🔄 Estado ANTES de actualizar:', productImages)
+      
       // Actualizar estado y forzar re-render
       setProductImages((prevImages) => {
-        return [...prevImages, ...newUrls]
+        const updated = [...prevImages, ...newUrls]
+        console.log('🔄 Estado DESPUÉS de actualizar:', updated)
+        return updated
       })
       
       // Forzar re-render del componente de imágenes
       setImageKey(prev => prev + 1)
+      
+      console.log('✅ Estado actualizado, imageKey incrementado')
       
       setSuccessMessage(`${newUrls.length} imagen(es) subida(s) exitosamente`)
       setTimeout(() => setSuccessMessage(null), 4000)
