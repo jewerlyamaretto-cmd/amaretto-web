@@ -40,6 +40,8 @@ const SettingsSchema = new Schema<ISettings>(
     businessHours: { type: String, default: 'Lunes a Viernes: 9:00 AM - 6:00 PM' },
     shippingInfo: { type: String, default: 'Envíos a todo México' },
     returnPolicy: { type: String, default: '' },
+    heroImage: { type: String, default: '' },
+    heroType: { type: String, enum: ['manual', 'random'], default: 'random' },
   },
   {
     timestamps: true,
