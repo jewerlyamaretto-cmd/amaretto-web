@@ -79,7 +79,7 @@ export default function AdminPage() {
   const [isSettingsLoading, setIsSettingsLoading] = useState(false)
   const [isSavingSettings, setIsSavingSettings] = useState(false)
   const [productImages, setProductImages] = useState<string[]>([])
-  const [imageKey, setImageKey] = useState(0) // Para forzar re-render
+  const [forceUpdate, setForceUpdate] = useState(0)
   const [isUploadingImages, setIsUploadingImages] = useState(false)
   const [showCloudinaryGallery, setShowCloudinaryGallery] = useState(false)
   const [cloudinaryImages, setCloudinaryImages] = useState<any[]>([])
@@ -428,19 +428,18 @@ O si tienes MongoDB local:
         throw new Error('Las URLs recibidas no son válidas')
       }
 
-      console.log('🔄 Estado ANTES de actualizar:', productImages)
+      // Actualizar estado de forma directa
+      const currentImages = [...productImages, ...newUrls]
+      setProductImages(currentImages)
       
-      // Actualizar estado y forzar re-render
-      setProductImages((prevImages) => {
-        const updated = [...prevImages, ...newUrls]
-        console.log('🔄 Estado DESPUÉS de actualizar:', updated)
-        return updated
-      })
+      // Forzar re-render completo
+      setForceUpdate(prev => prev + 1)
       
-      // Forzar re-render del componente de imágenes
-      setImageKey(prev => prev + 1)
-      
-      console.log('✅ Estado actualizado, imageKey incrementado')
+      // Forzar re-render después de un pequeño delay para asegurar
+      setTimeout(() => {
+        setProductImages([...currentImages])
+        setForceUpdate(prev => prev + 1)
+      }, 100)
       
       setSuccessMessage(`${newUrls.length} imagen(es) subida(s) exitosamente`)
       setTimeout(() => setSuccessMessage(null), 4000)
@@ -808,38 +807,45 @@ O si tienes MongoDB local:
                       <p className="text-sm font-sans font-medium text-amaretto-black mb-2">
                         Vista previa de imágenes ({productImages.length}/5):
                       </p>
-                      <div key={imageKey} className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                        {productImages.map((imageUrl, index) => {
-                          if (!imageUrl || typeof imageUrl !== 'string') {
-                            return null
-                          }
-                          
-                          const url = imageUrl.trim()
-                          
-                          return (
-                            <div key={`img-${index}-${url.substring(url.length - 20)}`} className="relative group">
-                              <div className="w-full h-24 rounded-lg border-2 border-amaretto-gray-light overflow-hidden bg-white flex items-center justify-center">
-                                <img
-                                  src={url}
-                                  alt={`Imagen ${index + 1}`}
-                                  className="w-full h-full object-cover"
-                                  style={{ minHeight: '96px' }}
-                                />
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveImage(index)}
-                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold z-10 hover:bg-red-600"
-                                aria-label="Eliminar imagen"
+                      <div key={`images-container-${forceUpdate}`} className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        {productImages && productImages.length > 0 ? (
+                          productImages.map((imageUrl, index) => {
+                            if (!imageUrl) return null
+                            
+                            const url = String(imageUrl).trim()
+                            
+                            return (
+                              <div 
+                                key={`img-${index}-${forceUpdate}-${url}`} 
+                                className="relative group"
                               >
-                                ×
-                              </button>
-                              <span className="absolute bottom-1 left-1 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded font-semibold">
-                                {index + 1}
-                              </span>
-                            </div>
-                          )
-                        })}
+                                <div className="w-full h-24 rounded-lg border-2 border-amaretto-gray-light overflow-hidden bg-white">
+                                  <img
+                                    src={url}
+                                    alt={`Imagen ${index + 1}`}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none'
+                                    }}
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveImage(index)}
+                                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold z-10 hover:bg-red-600"
+                                  aria-label="Eliminar imagen"
+                                >
+                                  ×
+                                </button>
+                                <span className="absolute bottom-1 left-1 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded font-semibold">
+                                  {index + 1}
+                                </span>
+                              </div>
+                            )
+                          })
+                        ) : (
+                          <p className="text-sm text-amaretto-black/60">No hay imágenes</p>
+                        )}
                       </div>
                       <div className="bg-amaretto-beige rounded-lg p-4 space-y-2">
                         <p className="text-sm font-sans font-medium text-amaretto-black">
