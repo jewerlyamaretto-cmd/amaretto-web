@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useCart } from '@/src/context/CartContext'
 
-export default function Gracias() {
+function GraciasContent() {
   const searchParams = useSearchParams()
   const { clearCart } = useCart()
   const [orderId, setOrderId] = useState<string | null>(null)
@@ -98,6 +98,18 @@ export default function Gracias() {
         </div>
       </section>
     </div>
+  )
+}
+
+export default function Gracias() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-amaretto-white flex items-center justify-center">
+        <p className="text-amaretto-black/60 font-sans">Cargando...</p>
+      </div>
+    }>
+      <GraciasContent />
+    </Suspense>
   )
 }
 

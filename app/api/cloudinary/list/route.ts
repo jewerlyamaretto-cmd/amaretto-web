@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cloudinary } from '@/src/lib/cloudinary'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     // Validar configuración de Cloudinary
