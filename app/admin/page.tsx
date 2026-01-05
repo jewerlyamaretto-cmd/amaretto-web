@@ -398,7 +398,16 @@ O si tienes MongoDB local:
         throw new Error(data.error || 'Error al subir las imágenes')
       }
 
-      setProductImages((prev) => [...prev, ...data.files])
+      // Verificar que data.files existe y es un array
+      if (data.files && Array.isArray(data.files) && data.files.length > 0) {
+        console.log('Imágenes subidas exitosamente:', data.files)
+        setProductImages((prev) => [...prev, ...data.files])
+        setSuccessMessage(`${data.files.length} imagen(es) subida(s) exitosamente`)
+        setTimeout(() => setSuccessMessage(null), 4000)
+      } else {
+        throw new Error('No se recibieron URLs de imágenes válidas')
+      }
+      
       e.target.value = '' // Limpiar input
     } catch (err) {
       console.error(err)
@@ -759,14 +768,29 @@ O si tienes MongoDB local:
                   )}
                   {productImages.length > 0 && (
                     <div className="mt-4 space-y-4">
+                      <p className="text-sm font-sans font-medium text-amaretto-black mb-2">
+                        Vista previa de imágenes ({productImages.length}/5):
+                      </p>
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                         {productImages.map((image, index) => (
                           <div key={index} className="relative group">
-                            <img
-                              src={image}
-                              alt={`Imagen ${index + 1}`}
-                              className="w-full h-24 object-cover rounded-lg border border-amaretto-gray-light"
-                            />
+                            {image && image.startsWith('http') ? (
+                              <img
+                                src={image}
+                                alt={`Imagen ${index + 1}`}
+                                className="w-full h-24 object-cover rounded-lg border border-amaretto-gray-light"
+                                onError={(e) => {
+                                  console.error('Error al cargar imagen:', image)
+                                  e.currentTarget.src = '/placeholder-image.png'
+                                }}
+                              />
+                            ) : (
+                              <div className="w-full h-24 bg-amaretto-gray-light rounded-lg border border-amaretto-gray-light flex items-center justify-center">
+                                <p className="text-xs text-amaretto-black/60 text-center px-2 break-all">
+                                  {image || 'URL inválida'}
+                                </p>
+                              </div>
+                            )}
                             <button
                               type="button"
                               onClick={() => handleRemoveImage(index)}
