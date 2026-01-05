@@ -2,8 +2,39 @@ import Link from 'next/link'
 import CollectionCard from '@/components/CollectionCard'
 import TestimonialCard from '@/components/TestimonialCard'
 import WhatsAppButton from '@/components/WhatsAppButton'
+import { connectToDatabase } from '@/src/lib/db'
+import { Product } from '@/src/models/Product'
+import { Settings } from '@/src/models/Settings'
+import ProductImage from '@/components/ProductImage'
 
-export default function Home() {
+async function getSettings() {
+  try {
+    await connectToDatabase()
+    const settings = await Settings.findOne().lean()
+    return settings || { heroType: 'random', heroImage: '' }
+  } catch (error) {
+    console.error('Error al obtener settings:', error)
+    return { heroType: 'random', heroImage: '' }
+  }
+}
+
+async function getRandomProduct() {
+  try {
+    await connectToDatabase()
+    const products = await Product.find({ stock: { $gt: 0 } }).lean()
+    if (products.length === 0) return null
+    
+    const randomIndex = Math.floor(Math.random() * products.length)
+    return products[randomIndex]
+  } catch (error) {
+    console.error('Error al obtener producto aleatorio:', error)
+    return null
+  }
+}
+
+export default async function Home() {
+  const settings = await getSettings()
+  const randomProduct = settings?.heroType === 'random' ? await getRandomProduct() : null
   const collections = [
     {
       name: 'Anillos',
@@ -72,11 +103,33 @@ export default function Home() {
               </Link>
             </div>
             
-            {/* Imagen placeholder */}
-            <div className="relative w-full h-96 bg-amaretto-gray-light rounded-lg flex items-center justify-center">
-              <p className="text-amaretto-black/30 font-sans text-sm">
-                Imagen Hero
-              </p>
+            {/* Imagen Hero */}
+            <div className="relative w-full h-96 bg-amaretto-beige rounded-lg overflow-hidden">
+              {settings?.heroType === 'manual' && settings?.heroImage ? (
+                <ProductImage
+                  src={settings.heroImage}
+                  alt="Imagen destacada"
+                  className="w-full h-96"
+                  fallback="Imagen no disponible"
+                />
+              ) : randomProduct && randomProduct.images && randomProduct.images[0] ? (
+                <Link href={`/producto/${randomProduct.slug}`} className="block w-full h-full group">
+                  <ProductImage
+                    src={randomProduct.images[0]}
+                    alt={randomProduct.name}
+                    className="w-full h-96"
+                    fallback="Imagen no disponible"
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <p className="text-white font-serif text-lg font-semibold">{randomProduct.name}</p>
+                    <p className="text-white/90 font-sans text-sm">${randomProduct.price?.toLocaleString('es-MX')} MXN</p>
+                  </div>
+                </Link>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-amaretto-black/30 font-sans text-sm">
+                  Imagen Hero
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -20,6 +20,8 @@ export interface ISettings extends Document {
   businessHours: string
   shippingInfo: string
   returnPolicy: string
+  heroImage?: string
+  heroType?: 'manual' | 'random'
   
   updatedAt: Date
 }

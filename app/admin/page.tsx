@@ -50,6 +50,8 @@ interface SettingsForm {
   businessHours: string
   shippingInfo: string
   returnPolicy: string
+  heroImage?: string
+  heroType?: 'manual' | 'random'
 }
 
 export default function AdminPage() {
@@ -76,6 +78,8 @@ export default function AdminPage() {
     businessHours: '',
     shippingInfo: '',
     returnPolicy: '',
+    heroImage: '',
+    heroType: 'random',
   })
   const [isSettingsLoading, setIsSettingsLoading] = useState(false)
   const [isSavingSettings, setIsSavingSettings] = useState(false)
