@@ -400,11 +400,26 @@ O si tienes MongoDB local:
 
       // Verificar que data.files existe y es un array
       if (data.files && Array.isArray(data.files) && data.files.length > 0) {
-        console.log('Imágenes subidas exitosamente:', data.files)
-        setProductImages((prev) => [...prev, ...data.files])
-        setSuccessMessage(`${data.files.length} imagen(es) subida(s) exitosamente`)
-        setTimeout(() => setSuccessMessage(null), 4000)
+        console.log('✅ Imágenes subidas exitosamente:', data.files)
+        // Filtrar y limpiar las URLs
+        const validUrls = data.files
+          .filter((url: string) => url && typeof url === 'string' && url.trim().length > 0)
+          .map((url: string) => url.trim())
+        
+        if (validUrls.length > 0) {
+          console.log('✅ URLs válidas:', validUrls)
+          setProductImages((prev) => {
+            const newImages = [...prev, ...validUrls]
+            console.log('✅ Total de imágenes en estado:', newImages)
+            return newImages
+          })
+          setSuccessMessage(`${validUrls.length} imagen(es) subida(s) exitosamente`)
+          setTimeout(() => setSuccessMessage(null), 4000)
+        } else {
+          throw new Error('No se recibieron URLs de imágenes válidas')
+        }
       } else {
+        console.error('❌ Respuesta inválida de la API:', data)
         throw new Error('No se recibieron URLs de imágenes válidas')
       }
       
@@ -772,38 +787,59 @@ O si tienes MongoDB local:
                         Vista previa de imágenes ({productImages.length}/5):
                       </p>
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                        {productImages.map((image, index) => (
-                          <div key={index} className="relative group">
-                            {image && image.startsWith('http') ? (
-                              <img
-                                src={image}
-                                alt={`Imagen ${index + 1}`}
-                                className="w-full h-24 object-cover rounded-lg border border-amaretto-gray-light"
-                                onError={(e) => {
-                                  console.error('Error al cargar imagen:', image)
-                                  e.currentTarget.src = '/placeholder-image.png'
-                                }}
-                              />
-                            ) : (
-                              <div className="w-full h-24 bg-amaretto-gray-light rounded-lg border border-amaretto-gray-light flex items-center justify-center">
-                                <p className="text-xs text-amaretto-black/60 text-center px-2 break-all">
-                                  {image || 'URL inválida'}
-                                </p>
-                              </div>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveImage(index)}
-                              className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
-                              aria-label="Eliminar imagen"
-                            >
-                              ×
-                            </button>
-                            <span className="absolute bottom-1 left-1 bg-black/50 text-white text-xs px-1 rounded">
-                              {index + 1}
-                            </span>
-                          </div>
-                        ))}
+                        {productImages.map((image, index) => {
+                          const imageUrl = image?.trim() || ''
+                          const isValidUrl = imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))
+                          
+                          return (
+                            <div key={`image-${index}-${imageUrl}`} className="relative group">
+                              {isValidUrl ? (
+                                <div className="w-full h-24 rounded-lg border border-amaretto-gray-light overflow-hidden bg-amaretto-gray-light">
+                                  <img
+                                    src={imageUrl}
+                                    alt={`Imagen ${index + 1}`}
+                                    className="w-full h-full object-cover"
+                                    crossOrigin="anonymous"
+                                    loading="lazy"
+                                    onLoad={() => {
+                                      console.log('Imagen cargada exitosamente:', imageUrl)
+                                    }}
+                                    onError={(e) => {
+                                      console.error('Error al cargar imagen:', imageUrl)
+                                      const target = e.currentTarget
+                                      target.style.display = 'none'
+                                      const parent = target.parentElement
+                                      if (parent) {
+                                        parent.innerHTML = `
+                                          <div class="w-full h-full flex items-center justify-center bg-red-50 border-2 border-red-200 rounded-lg">
+                                            <p class="text-xs text-red-600 text-center px-2">Error al cargar</p>
+                                          </div>
+                                        `
+                                      }
+                                    }}
+                                  />
+                                </div>
+                              ) : (
+                                <div className="w-full h-24 bg-amaretto-gray-light rounded-lg border border-amaretto-gray-light flex items-center justify-center">
+                                  <p className="text-xs text-amaretto-black/60 text-center px-2 break-all">
+                                    {imageUrl || 'URL inválida'}
+                                  </p>
+                                </div>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveImage(index)}
+                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold z-10"
+                                aria-label="Eliminar imagen"
+                              >
+                                ×
+                              </button>
+                              <span className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded font-medium">
+                                {index + 1}
+                              </span>
+                            </div>
+                          )
+                        })}
                       </div>
                       <div className="bg-amaretto-beige rounded-lg p-4 space-y-2">
                         <p className="text-sm font-sans font-medium text-amaretto-black">
