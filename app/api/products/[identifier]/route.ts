@@ -4,7 +4,7 @@ import { Product } from '@/src/models/Product'
 import mongoose from 'mongoose'
 import * as fileStorage from '@/src/lib/fileStorage'
 
-// Función helper para validar URLs de imágenes
+// Función helper para validar URLs de imágenes (solo URLs completas)
 const validateImageUrl = (imageUrl: string | undefined | null): string | null => {
   if (!imageUrl || typeof imageUrl !== 'string') {
     return null
