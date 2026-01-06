@@ -22,12 +22,20 @@ async function getSettings() {
 async function getProductsForHero() {
   try {
     await connectToDatabase()
-    const products = await Product.find({ stock: { $gt: 0 } })
+    const products = await Product.find({ 
+      stock: { $gt: 0 },
+      images: { $exists: true, $ne: [] } // Solo productos con imágenes
+    })
       .limit(20) // Obtener más productos para mejor variedad
       .lean()
     
-    // Mezclar productos aleatoriamente
-    const shuffled = products.sort(() => Math.random() - 0.5)
+    // Mezclar productos aleatoriamente usando Fisher-Yates shuffle
+    const shuffled = [...products]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+    
     return JSON.parse(JSON.stringify(shuffled)) as ProductDTO[]
   } catch (error) {
     console.error('Error al obtener productos para hero:', error)
@@ -66,45 +74,58 @@ async function getFeaturedProducts(featuredIds: {
   try {
     await connectToDatabase()
     const mongoose = await import('mongoose')
-    const productIds = [
+    
+    // Filtrar IDs válidos y convertirlos a ObjectId
+    const validIds = [
       featuredIds.ringsProductId,
       featuredIds.earringsProductId,
       featuredIds.necklacesProductId,
       featuredIds.braceletsProductId,
-    ]
-      .filter((id): id is string => !!id)
-      .map((id) => new mongoose.Types.ObjectId(id))
+    ].filter((id): id is string => {
+      if (!id) return false
+      try {
+        new mongoose.Types.ObjectId(id)
+        return true
+      } catch {
+        return false
+      }
+    })
 
-    if (productIds.length === 0) {
+    if (validIds.length === 0) {
       return {}
     }
 
-    const products = await Product.find({ _id: { $in: productIds } }).lean()
-    const productsMap: Record<string, ProductDTO> = {}
+    // Convertir a ObjectId
+    const productIds = validIds.map((id) => new mongoose.Types.ObjectId(id))
 
+    // Buscar productos
+    const products = await Product.find({ _id: { $in: productIds } }).lean()
+    
+    // Crear mapa de productos por ID (como string)
+    const productsMap: Record<string, ProductDTO> = {}
     products.forEach((product) => {
       const productDto = JSON.parse(JSON.stringify(product)) as ProductDTO
-      // Normalizar el ID como string para la comparación
       const productIdStr = product._id.toString()
       productsMap[productIdStr] = productDto
     })
 
-    // Normalizar IDs para comparación
-    const normalizeId = (id?: string) => id ? id.trim() : null
+    // Función helper para obtener producto por ID
+    const getProductById = (id?: string): ProductDTO | null => {
+      if (!id) return null
+      try {
+        // Normalizar el ID (puede venir como ObjectId o string)
+        const normalizedId = id.toString().trim()
+        return productsMap[normalizedId] || null
+      } catch {
+        return null
+      }
+    }
 
     return {
-      rings: featuredIds.ringsProductId 
-        ? productsMap[normalizeId(featuredIds.ringsProductId) || ''] || null
-        : null,
-      earrings: featuredIds.earringsProductId 
-        ? productsMap[normalizeId(featuredIds.earringsProductId) || ''] || null
-        : null,
-      necklaces: featuredIds.necklacesProductId 
-        ? productsMap[normalizeId(featuredIds.necklacesProductId) || ''] || null
-        : null,
-      bracelets: featuredIds.braceletsProductId 
-        ? productsMap[normalizeId(featuredIds.braceletsProductId) || ''] || null
-        : null,
+      rings: getProductById(featuredIds.ringsProductId),
+      earrings: getProductById(featuredIds.earringsProductId),
+      necklaces: getProductById(featuredIds.necklacesProductId),
+      bracelets: getProductById(featuredIds.braceletsProductId),
     }
   } catch (error) {
     console.error('Error al obtener productos destacados:', error)

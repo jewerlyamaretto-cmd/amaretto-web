@@ -8,6 +8,8 @@ import { connectToDatabase } from '@/src/lib/db'
 import { Product } from '@/src/models/Product'
 import { ProductDTO } from '@/src/types/product'
 
+export const dynamic = 'force-dynamic'
+
 interface ProductoPageProps {
   params: {
     slug: string
@@ -46,7 +48,9 @@ async function getRelated(slug: string) {
 }
 
 export default async function ProductoPage({ params }: ProductoPageProps) {
-  const product = await getProductData(params.slug)
+  // Decodificar el slug en caso de que tenga caracteres especiales
+  const slug = decodeURIComponent(params.slug)
+  const product = await getProductData(slug)
 
   if (!product) {
     notFound()

@@ -19,7 +19,11 @@ export default function HeroProductCarousel({ products }: HeroProductCarouselPro
 
   useEffect(() => {
     // Si solo hay un producto, no rotar
-    if (productsWithImages.length <= 1) return
+    if (productsWithImages.length <= 1) {
+      setCurrentIndex(0)
+      setFade(true)
+      return
+    }
 
     // Rotar cada 5 segundos con transición fade
     const interval = setInterval(() => {
@@ -31,7 +35,7 @@ export default function HeroProductCarousel({ products }: HeroProductCarouselPro
     }, 5000)
 
     return () => clearInterval(interval)
-  }, [productsWithImages.length])
+  }, [productsWithImages.length, productsWithImages])
 
   if (productsWithImages.length === 0) {
     return (

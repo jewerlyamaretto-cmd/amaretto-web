@@ -20,9 +20,9 @@ export default function Carrito() {
   }, [items])
 
   const whatsappMessage = encodeURIComponent(
-    `Hola, me interesa confirmar mi pedido:\n\n${orderSummary}\n\nTotal estimado: $${getTotal().toLocaleString(
+    `Hola, me interesa confirmar mi pedido:\n\n${orderSummary}\n\nTotal: $${getTotal().toLocaleString(
       'es-MX'
-    )} MXN`
+    )} MXN\n\n(El envío se coordinará al confirmar el pedido)`
   )
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`
 
@@ -217,19 +217,15 @@ export default function Carrito() {
                   Resumen de tu selección
                 </h2>
                 <p className="text-sm font-sans text-amaretto-black/70">
-                  No realizamos pagos en línea por ahora. Al enviarnos tu pedido por WhatsApp confirmaremos stock y coordinaremos el pago contigo.
+                  No realizamos pagos en línea por ahora. Al enviarnos tu pedido por WhatsApp confirmaremos stock, coordinaremos el pago y el envío contigo.
                 </p>
 
                 <div className="space-y-3 pb-4 border-b border-amaretto-gray-light">
                   <div className="flex justify-between text-sm font-sans">
-                    <span className="text-amaretto-black/60">Subtotal:</span>
+                    <span className="text-amaretto-black/60">Total:</span>
                     <span className="text-amaretto-black font-medium">
                       ${getSubtotal().toLocaleString('es-MX')} MXN
                     </span>
-                  </div>
-                  <div className="flex justify-between text-sm font-sans">
-                    <span className="text-amaretto-black/60">Envío estimado:</span>
-                    <span className="text-amaretto-black font-medium">$150 MXN</span>
                   </div>
                 </div>
 

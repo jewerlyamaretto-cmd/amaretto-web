@@ -99,9 +99,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }
 
   const getTotal = () => {
-    const subtotal = getSubtotal()
-    const shipping = subtotal > 0 ? 150 : 0 // Envío estimado de $150 MXN
-    return subtotal + shipping
+    // Solo devolver el subtotal, sin envío
+    return getSubtotal()
   }
 
   return (
