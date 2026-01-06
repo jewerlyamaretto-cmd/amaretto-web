@@ -13,12 +13,10 @@ const emptyProduct = {
   discountPrice: 0,
   isOnSale: false,
   category: 'Anillos',
-  tags: '',
   images: '',
   stock: 0,
   material: '',
   medidas: '',
-  cierre: '',
   isNew: false,
 }
 
@@ -374,12 +372,10 @@ O si tienes MongoDB local:
         description: form.description.trim(),
         price: Number(form.price),
         category: form.category,
-        tags: form.tags ? form.tags.split(',').map((tag) => tag.trim()).filter(tag => tag) : [],
         images: productImages.length > 0 ? productImages : [],
         stock: Number(form.stock) || 0,
         material: form.material || '',
         medidas: form.medidas || '',
-        cierre: form.cierre || '',
         featured: false,
         isNew: form.isNew || false,
       }
@@ -449,7 +445,6 @@ O si tienes MongoDB local:
     
     setForm({
       ...product,
-      tags: product.tags ? (Array.isArray(product.tags) ? product.tags.join(', ') : String(product.tags)) : '',
       images: '',
       originalPrice: product.originalPrice || 0,
       discountPrice: product.discountPrice || 0,
@@ -828,16 +823,6 @@ O si tienes MongoDB local:
                   <option value="Pulseras">Pulseras</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-sans font-medium text-amaretto-black mb-2">Etiquetas (separadas por coma)</label>
-                <input
-                  name="tags"
-                  value={form.tags}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-lg border border-amaretto-gray-light focus:ring-2 focus:ring-amaretto-pink outline-none font-sans"
-                  placeholder="elegante, minimalista"
-                />
-              </div>
             </div>
 
             <div className="space-y-4">
@@ -1074,15 +1059,6 @@ O si tienes MongoDB local:
                     className="w-full px-4 py-3 rounded-lg border border-amaretto-gray-light focus:ring-2 focus:ring-amaretto-pink outline-none font-sans"
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-sans font-medium text-amaretto-black mb-2">Tipo de cierre</label>
-                <input
-                  name="cierre"
-                  value={form.cierre}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-lg border border-amaretto-gray-light focus:ring-2 focus:ring-amaretto-pink outline-none font-sans"
-                />
               </div>
             </div>
 

@@ -126,14 +126,14 @@ export async function POST(request: NextRequest) {
       description: body.description.trim(),
       price: Number(body.price),
       category: body.category || 'Anillos',
-      tags: Array.isArray(body.tags) ? body.tags : [],
+      tags: [], // Campo deshabilitado - siempre vacío
       images: Array.isArray(body.images) 
         ? body.images.map((img: any) => validateImageUrl(img)).filter((img: string | null): img is string => img !== null)
         : [],
       stock: Number(body.stock) || 0,
       material: body.material || '',
       medidas: body.medidas || '',
-      cierre: body.cierre || '',
+      cierre: '', // Campo deshabilitado - siempre vacío
       featured: body.featured || false,
       isNew: body.isNew || false,
     }
