@@ -18,120 +18,180 @@ interface ProductoPageProps {
   }
 }
 
-async function getProductData(slug: string) {
+/**
+ * Obtiene un producto por su slug
+ * Retorna null si no se encuentra o hay un error
+ */
+async function getProductData(slug: string): Promise<ProductDTO | null> {
   try {
-    await connectToDatabase()
-    
-    // Limpiar y normalizar el slug
+    // Validar slug
+    if (!slug || typeof slug !== 'string') {
+      return null
+    }
+
     const cleanSlug = slug.trim()
     if (!cleanSlug) {
       return null
     }
-    
-    // Intentar buscar con el slug tal cual
+
+    // Conectar a la base de datos
+    await connectToDatabase()
+
+    // Buscar producto por slug exacto (búsqueda principal)
     let product = await Product.findOne({ slug: cleanSlug }).lean()
-    
-    // Si no se encuentra, intentar con el slug decodificado
+
+    // Si no se encuentra, intentar con slug decodificado
     if (!product) {
       try {
         const decodedSlug = decodeURIComponent(cleanSlug)
         if (decodedSlug !== cleanSlug) {
           product = await Product.findOne({ slug: decodedSlug }).lean()
         }
-      } catch (e) {
-        // Si falla la decodificación, continuar
+      } catch (decodeError) {
+        // Ignorar errores de decodificación
       }
     }
-    
-    // Si aún no se encuentra, intentar buscar sin case sensitive (solo si el slug no tiene caracteres especiales)
-    if (!product && /^[a-z0-9-]+$/i.test(cleanSlug)) {
-      try {
-        product = await Product.findOne({ 
-          slug: { $regex: new RegExp(`^${cleanSlug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } 
-        }).lean()
-      } catch (e) {
-        // Si falla la búsqueda regex, continuar
-      }
-    }
-    
+
+    // Si aún no se encuentra, retornar null (no hacer más búsquedas para evitar problemas)
     if (!product) {
       return null
     }
-    
-    // Validar que el producto tenga los campos mínimos necesarios
-    if (!product.name || product.price === undefined) {
-      console.error('Producto encontrado pero con datos incompletos:', product._id)
+
+    // Validar que el producto tenga datos mínimos
+    if (!product.name || product.price === undefined || product.price === null) {
       return null
     }
-    
-    return JSON.parse(JSON.stringify(product)) as ProductDTO
+
+    // Convertir a DTO de forma segura
+    try {
+      const productDto: ProductDTO = {
+        _id: product._id?.toString() || '',
+        name: product.name || '',
+        slug: product.slug || cleanSlug,
+        description: product.description || '',
+        price: typeof product.price === 'number' ? product.price : 0,
+        originalPrice: typeof product.originalPrice === 'number' ? product.originalPrice : undefined,
+        discountPrice: typeof product.discountPrice === 'number' ? product.discountPrice : undefined,
+        isOnSale: Boolean(product.isOnSale),
+        category: product.category || 'Anillos',
+        tags: Array.isArray(product.tags) ? product.tags : [],
+        images: Array.isArray(product.images) ? product.images.filter((img): img is string => typeof img === 'string' && img.length > 0) : [],
+        stock: typeof product.stock === 'number' ? product.stock : 0,
+        material: typeof product.material === 'string' ? product.material : '',
+        medidas: typeof product.medidas === 'string' ? product.medidas : '',
+        cierre: typeof product.cierre === 'string' ? product.cierre : '',
+        featured: Boolean(product.featured),
+        isNew: Boolean(product.isNew),
+      }
+
+      return productDto
+    } catch (parseError) {
+      console.error('Error al convertir producto a DTO:', parseError)
+      return null
+    }
   } catch (error) {
-    console.error('Error al obtener producto:', error)
+    // Capturar todos los errores y retornar null en lugar de lanzar
+    console.error('Error al obtener producto:', error instanceof Error ? error.message : 'Error desconocido')
     return null
   }
 }
 
-async function getRelated(slug: string, category?: string) {
+/**
+ * Obtiene productos relacionados
+ * Retorna array vacío si hay error
+ */
+async function getRelated(slug: string, category?: string): Promise<ProductDTO[]> {
   try {
-    if (!category) {
+    if (!category || typeof category !== 'string') {
       return []
     }
-    
+
+    if (!slug || typeof slug !== 'string') {
+      return []
+    }
+
     await connectToDatabase()
+
     const related = await Product.find({
       slug: { $ne: slug },
       category: category,
-      stock: { $gt: 0 }, // Solo productos con stock
+      stock: { $gt: 0 },
     })
       .limit(4)
       .lean()
 
-    return JSON.parse(JSON.stringify(related)) as ProductDTO[]
+    // Convertir a DTOs de forma segura
+    const relatedDtos: ProductDTO[] = related
+      .filter((p) => p.name && p.price !== undefined && p.price !== null)
+      .map((p) => ({
+        _id: p._id?.toString() || '',
+        name: p.name || '',
+        slug: p.slug || '',
+        description: p.description || '',
+        price: typeof p.price === 'number' ? p.price : 0,
+        originalPrice: typeof p.originalPrice === 'number' ? p.originalPrice : undefined,
+        discountPrice: typeof p.discountPrice === 'number' ? p.discountPrice : undefined,
+        isOnSale: Boolean(p.isOnSale),
+        category: p.category || 'Anillos',
+        tags: Array.isArray(p.tags) ? p.tags : [],
+        images: Array.isArray(p.images) ? p.images.filter((img): img is string => typeof img === 'string' && img.length > 0) : [],
+        stock: typeof p.stock === 'number' ? p.stock : 0,
+        material: typeof p.material === 'string' ? p.material : '',
+        medidas: typeof p.medidas === 'string' ? p.medidas : '',
+        cierre: typeof p.cierre === 'string' ? p.cierre : '',
+        featured: Boolean(p.featured),
+        isNew: Boolean(p.isNew),
+      }))
+
+    return relatedDtos
   } catch (error) {
-    console.error('Error al obtener productos relacionados:', error)
+    console.error('Error al obtener productos relacionados:', error instanceof Error ? error.message : 'Error desconocido')
     return []
   }
 }
 
 export default async function ProductoPage({ params }: ProductoPageProps) {
+  // Resolver params (puede ser Promise en Next.js 15)
+  let slug: string
+
   try {
-    // Manejar params como Promise (Next.js 15) o objeto directo
     const resolvedParams = params instanceof Promise ? await params : params
-    
-    // Validar que params tenga slug
-    if (!resolvedParams || !resolvedParams.slug) {
-      console.error('Slug no proporcionado en params')
+
+    if (!resolvedParams || !resolvedParams.slug || typeof resolvedParams.slug !== 'string') {
       notFound()
     }
-    
-    // Decodificar el slug en caso de que tenga caracteres especiales
-    let slug: string
+
+    // Decodificar slug de forma segura
     try {
       slug = decodeURIComponent(resolvedParams.slug)
     } catch {
       slug = resolvedParams.slug
     }
-    
-    // Validar que el slug no esté vacío
+
+    // Validar slug
     if (!slug || slug.trim() === '') {
-      console.error('Slug vacío')
       notFound()
     }
-    
-    const product = await getProductData(slug)
+  } catch (error) {
+    // Si hay error al procesar params, mostrar 404
+    notFound()
+  }
 
-    if (!product) {
-      console.error('Producto no encontrado para slug:', slug)
-      notFound()
-    }
+  // Obtener producto
+  const product = await getProductData(slug)
 
-    // Validar que el producto tenga los campos mínimos
-    if (!product.name) {
-      console.error('Producto sin nombre:', product._id)
-      notFound()
-    }
+  // Si no se encuentra el producto, mostrar 404
+  if (!product) {
+    notFound()
+  }
 
-    const relatedProducts = await getRelated(slug, product.category || undefined)
+  // Validar datos mínimos del producto
+  if (!product.name || product.price === undefined || product.price === null) {
+    notFound()
+  }
+
+  // Obtener productos relacionados (no crítico, puede fallar sin romper la página)
+  const relatedProducts = await getRelated(slug, product.category || undefined)
 
   return (
     <div className="min-h-screen bg-amaretto-white">
@@ -146,16 +206,19 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
             <Link href="/coleccion" className="hover:text-amaretto-pink transition-colors duration-200">
               Colección
             </Link>
-            <span>/</span>
             {product.category && (
               <>
-                <Link href={`/coleccion?categoria=${encodeURIComponent(product.category.toLowerCase())}`} className="hover:text-amaretto-pink transition-colors duration-200">
+                <span>/</span>
+                <Link
+                  href={`/coleccion?categoria=${encodeURIComponent(product.category.toLowerCase())}`}
+                  className="hover:text-amaretto-pink transition-colors duration-200"
+                >
                   {product.category}
                 </Link>
-                <span>/</span>
               </>
             )}
-            <span className="text-amaretto-black">{product.name || 'Producto'}</span>
+            <span>/</span>
+            <span className="text-amaretto-black">{product.name}</span>
           </nav>
         </div>
       </section>
@@ -168,7 +231,7 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
             <div className="space-y-4">
               {/* Imagen principal */}
               <div className="relative w-full h-96 bg-amaretto-beige rounded-lg overflow-hidden">
-                {product.images && product.images[0] ? (
+                {product.images && product.images.length > 0 && product.images[0] ? (
                   <ProductImage
                     src={product.images[0]}
                     alt={product.name}
@@ -181,13 +244,13 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
                   </div>
                 )}
               </div>
-              
+
               {/* Miniaturas */}
-              <div className="grid grid-cols-3 gap-4">
-                {product.images && product.images.length > 1 ? (
-                  product.images.slice(1, 4).map((image, index) => (
+              {product.images && product.images.length > 1 && (
+                <div className="grid grid-cols-3 gap-4">
+                  {product.images.slice(1, 4).map((image, index) => (
                     <div
-                      key={index}
+                      key={`${product._id}-thumb-${index}`}
                       className="relative w-full h-24 bg-amaretto-gray-light rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity duration-200"
                     >
                       <ProductImage
@@ -197,9 +260,9 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
                         fallback="Imagen"
                       />
                     </div>
-                  ))
-                ) : null}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Información */}
@@ -220,11 +283,11 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
 
               {/* Nombre */}
               <h1 className="font-serif text-3xl md:text-4xl font-bold text-amaretto-black">
-                {product.name || 'Producto sin nombre'}
+                {product.name}
               </h1>
 
               {/* Precio */}
-              {product.price !== undefined && (
+              {product.price !== undefined && product.price !== null && (
                 <div className="flex items-center gap-3 flex-wrap">
                   {product.isOnSale && product.originalPrice ? (
                     <>
@@ -308,11 +371,11 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
 
               {/* Botones de acción */}
               <div className="pt-6 space-y-4">
-                {(product.stock ?? 0) > 0 && product.price !== undefined ? (
+                {(product.stock ?? 0) > 0 && product.price !== undefined && product.price !== null ? (
                   <>
                     <AddToCartButton product={product} />
                     <WhatsAppButton
-                      message={`Hola, me interesa el producto: ${product.name || 'Producto'} - ${product.category || 'Producto'}`}
+                      message={`Hola, me interesa el producto: ${product.name} - ${product.category || 'Producto'}`}
                       className="w-full"
                     >
                       Comprar por WhatsApp
@@ -323,7 +386,7 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
                     disabled
                     className="w-full bg-amaretto-gray-light text-amaretto-black/50 font-sans font-medium px-6 py-3 rounded-lg cursor-not-allowed"
                   >
-                    {product.price === undefined ? 'Producto no disponible' : 'Producto agotado'}
+                    {product.price === undefined || product.price === null ? 'Producto no disponible' : 'Producto agotado'}
                   </button>
                 )}
               </div>
@@ -333,26 +396,23 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
       </section>
 
       {/* Productos relacionados */}
-      <section className="py-16 bg-amaretto-beige">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="font-serif text-3xl md:text-4xl font-bold text-amaretto-black text-center mb-12">
-            Productos relacionados
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {relatedProducts.map((relatedProduct) => (
-              <ProductCard
-                key={relatedProduct._id}
-                product={relatedProduct}
-              />
-            ))}
+      {relatedProducts.length > 0 && (
+        <section className="py-16 bg-amaretto-beige">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="font-serif text-3xl md:text-4xl font-bold text-amaretto-black text-center mb-12">
+              Productos relacionados
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {relatedProducts.map((relatedProduct) => (
+                <ProductCard
+                  key={relatedProduct._id}
+                  product={relatedProduct}
+                />
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
     </div>
   )
-  } catch (error) {
-    console.error('Error en ProductoPage:', error)
-    // En caso de error, mostrar página 404
-    notFound()
-  }
 }
