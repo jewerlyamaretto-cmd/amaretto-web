@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation'
 import ProductCard from '@/components/ProductCard'
 import AddToCartButton from '@/components/AddToCartButton'
 import WhatsAppButton from '@/components/WhatsAppButton'
-import ProductImage from '@/components/ProductImage'
 import { connectToDatabase } from '@/src/lib/db'
 import { Product } from '@/src/models/Product'
 import { ProductDTO } from '@/src/types/product'
@@ -232,11 +231,10 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
               {/* Imagen principal */}
               <div className="relative w-full h-96 bg-amaretto-beige rounded-lg overflow-hidden">
                 {product.images && product.images.length > 0 && product.images[0] ? (
-                  <ProductImage
+                  <img
                     src={product.images[0]}
                     alt={product.name}
-                    className="w-full h-96"
-                    fallback="Imagen principal"
+                    className="w-full h-full object-contain"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-amaretto-black/30 font-sans text-sm">
@@ -253,11 +251,10 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
                       key={`${product._id}-thumb-${index}`}
                       className="relative w-full h-24 bg-amaretto-gray-light rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity duration-200"
                     >
-                      <ProductImage
+                      <img
                         src={image}
                         alt={`${product.name} - Vista ${index + 2}`}
-                        className="w-full h-24"
-                        fallback="Imagen"
+                        className="w-full h-full object-contain"
                       />
                     </div>
                   ))}
