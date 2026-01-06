@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { ProductDTO } from '@/src/types/product'
 
@@ -8,6 +9,8 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
+  const [imageError, setImageError] = useState(false)
+
   return (
     <Link href={`/producto/${product.slug}`} className="group">
       <div className="bg-amaretto-white border border-amaretto-gray-light rounded-lg overflow-hidden hover:shadow-lg transition-shadow duration-300">
@@ -18,22 +21,16 @@ export default function ProductCard({ product }: ProductCardProps) {
               NEW
             </div>
           )}
-          {product.images && product.images[0] ? (
+          {product.images && product.images[0] && !imageError ? (
             <img
               src={product.images[0]}
               alt={product.name}
               className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none'
-                const parent = e.currentTarget.parentElement
-                if (parent) {
-                  parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-amaretto-black/30 font-sans text-sm">Imagen no disponible</div>'
-                }
-              }}
+              onError={() => setImageError(true)}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-amaretto-black/30 font-sans text-sm">
-              Imagen
+              {imageError ? 'Imagen no disponible' : 'Imagen'}
             </div>
           )}
         </div>
