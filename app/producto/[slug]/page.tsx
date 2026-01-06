@@ -19,44 +19,67 @@ interface ProductoPageProps {
 async function getProductData(slug: string) {
   try {
     await connectToDatabase()
-    const product = await Product.findOne({ slug }).lean()
-    return product ? (JSON.parse(JSON.stringify(product)) as ProductDTO) : null
+    // Intentar buscar con el slug tal cual
+    let product = await Product.findOne({ slug }).lean()
+    
+    // Si no se encuentra, intentar con el slug decodificado
+    if (!product) {
+      const decodedSlug = decodeURIComponent(slug)
+      product = await Product.findOne({ slug: decodedSlug }).lean()
+    }
+    
+    // Si aún no se encuentra, intentar buscar sin case sensitive
+    if (!product) {
+      product = await Product.findOne({ 
+        slug: { $regex: new RegExp(`^${slug}$`, 'i') } 
+      }).lean()
+    }
+    
+    if (!product) {
+      return null
+    }
+    
+    return JSON.parse(JSON.stringify(product)) as ProductDTO
   } catch (error) {
-    console.error('Error de conexión a MongoDB:', error)
+    console.error('Error al obtener producto:', error)
     return null
   }
 }
 
-async function getRelated(slug: string) {
+async function getRelated(slug: string, category: string) {
   try {
     await connectToDatabase()
-    const current = await Product.findOne({ slug }).lean()
-    if (!current) return []
-
     const related = await Product.find({
       slug: { $ne: slug },
-      category: current.category,
+      category: category,
+      stock: { $gt: 0 }, // Solo productos con stock
     })
       .limit(4)
       .lean()
 
     return JSON.parse(JSON.stringify(related)) as ProductDTO[]
   } catch (error) {
-    console.error('Error de conexión a MongoDB:', error)
+    console.error('Error al obtener productos relacionados:', error)
     return []
   }
 }
 
 export default async function ProductoPage({ params }: ProductoPageProps) {
   // Decodificar el slug en caso de que tenga caracteres especiales
-  const slug = decodeURIComponent(params.slug)
+  let slug: string
+  try {
+    slug = decodeURIComponent(params.slug)
+  } catch {
+    slug = params.slug
+  }
+  
   const product = await getProductData(slug)
 
   if (!product) {
     notFound()
   }
 
-  const relatedProducts = await getRelated(params.slug)
+  const relatedProducts = await getRelated(slug, product.category)
 
   return (
     <div className="min-h-screen bg-amaretto-white">
@@ -72,9 +95,11 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
               Colección
             </Link>
             <span>/</span>
-            <Link href={`/coleccion?categoria=${product.category.toLowerCase()}`} className="hover:text-amaretto-pink transition-colors duration-200">
-              {product.category}
-            </Link>
+            {product.category && (
+              <Link href={`/coleccion?categoria=${product.category.toLowerCase()}`} className="hover:text-amaretto-pink transition-colors duration-200">
+                {product.category}
+              </Link>
+            )}
             <span>/</span>
             <span className="text-amaretto-black">{product.name}</span>
           </nav>
@@ -127,9 +152,11 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
             <div className="space-y-6">
               {/* Categoría y Badge NEW */}
               <div className="flex items-center gap-3 flex-wrap">
-                <p className="text-sm text-amaretto-black/60 font-sans uppercase tracking-wide">
-                  {product.category}
-                </p>
+                {product.category && (
+                  <p className="text-sm text-amaretto-black/60 font-sans uppercase tracking-wide">
+                    {product.category}
+                  </p>
+                )}
                 {product.isNew && (
                   <span className="bg-amaretto-pink text-white px-3 py-1 rounded-full text-xs font-sans font-bold">
                     NEW
@@ -143,29 +170,31 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
               </h1>
 
               {/* Precio */}
-              <div className="flex items-center gap-3 flex-wrap">
-                {product.isOnSale && product.originalPrice ? (
-                  <>
-                    <span className="line-through text-amaretto-black/40 text-xl">
-                      ${product.originalPrice.toLocaleString('es-MX')}
-                    </span>
-                    <span className="text-3xl font-sans font-bold text-amaretto-pink">
+              {product.price !== undefined && (
+                <div className="flex items-center gap-3 flex-wrap">
+                  {product.isOnSale && product.originalPrice ? (
+                    <>
+                      <span className="line-through text-amaretto-black/40 text-xl">
+                        ${product.originalPrice.toLocaleString('es-MX')}
+                      </span>
+                      <span className="text-3xl font-sans font-bold text-amaretto-pink">
+                        ${product.price.toLocaleString('es-MX')} MXN
+                      </span>
+                      <span className="text-sm bg-amaretto-pink/20 text-amaretto-pink px-3 py-1 rounded font-medium">
+                        OFERTA
+                      </span>
+                    </>
+                  ) : (
+                    <p className="text-3xl font-sans font-bold text-amaretto-black">
                       ${product.price.toLocaleString('es-MX')} MXN
-                    </span>
-                    <span className="text-sm bg-amaretto-pink/20 text-amaretto-pink px-3 py-1 rounded font-medium">
-                      OFERTA
-                    </span>
-                  </>
-                ) : (
-                  <p className="text-3xl font-sans font-bold text-amaretto-black">
-                    ${product.price.toLocaleString('es-MX')} MXN
-                  </p>
-                )}
-              </div>
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Estado de stock */}
               <div className="flex items-center gap-2">
-                {product.stock > 0 ? (
+                {(product.stock ?? 0) > 0 ? (
                   <>
                     <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                     <p className="text-sm font-sans text-amaretto-black">
@@ -183,43 +212,53 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
               </div>
 
               {/* Descripción */}
-              <div className="pt-4 border-t border-amaretto-gray-light">
-                <h2 className="font-serif text-xl font-bold text-amaretto-black mb-3">
-                  Descripción
-                </h2>
-                <p className="text-amaretto-black/70 font-sans leading-relaxed">
-                  {product.description}
-                </p>
-              </div>
+              {product.description && (
+                <div className="pt-4 border-t border-amaretto-gray-light">
+                  <h2 className="font-serif text-xl font-bold text-amaretto-black mb-3">
+                    Descripción
+                  </h2>
+                  <p className="text-amaretto-black/70 font-sans leading-relaxed">
+                    {product.description}
+                  </p>
+                </div>
+              )}
 
               {/* Detalles técnicos */}
-              <div className="pt-4 border-t border-amaretto-gray-light">
-                <h2 className="font-serif text-xl font-bold text-amaretto-black mb-4">
-                  Detalles técnicos
-                </h2>
-                <dl className="space-y-3 font-sans">
-                  <div className="flex justify-between">
-                    <dt className="text-amaretto-black/60 font-medium">Material:</dt>
-                    <dd className="text-amaretto-black">{product.material}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-amaretto-black/60 font-medium">Medidas:</dt>
-                    <dd className="text-amaretto-black">{product.medidas}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-amaretto-black/60 font-medium">Tipo de cierre:</dt>
-                    <dd className="text-amaretto-black">{product.cierre}</dd>
-                  </div>
-                </dl>
-              </div>
+              {(product.material || product.medidas || product.cierre) && (
+                <div className="pt-4 border-t border-amaretto-gray-light">
+                  <h2 className="font-serif text-xl font-bold text-amaretto-black mb-4">
+                    Detalles técnicos
+                  </h2>
+                  <dl className="space-y-3 font-sans">
+                    {product.material && (
+                      <div className="flex justify-between">
+                        <dt className="text-amaretto-black/60 font-medium">Material:</dt>
+                        <dd className="text-amaretto-black">{product.material}</dd>
+                      </div>
+                    )}
+                    {product.medidas && (
+                      <div className="flex justify-between">
+                        <dt className="text-amaretto-black/60 font-medium">Medidas:</dt>
+                        <dd className="text-amaretto-black">{product.medidas}</dd>
+                      </div>
+                    )}
+                    {product.cierre && (
+                      <div className="flex justify-between">
+                        <dt className="text-amaretto-black/60 font-medium">Tipo de cierre:</dt>
+                        <dd className="text-amaretto-black">{product.cierre}</dd>
+                      </div>
+                    )}
+                  </dl>
+                </div>
+              )}
 
               {/* Botones de acción */}
               <div className="pt-6 space-y-4">
-                {product.stock > 0 ? (
+                {(product.stock ?? 0) > 0 ? (
                   <>
                     <AddToCartButton product={product} />
                     <WhatsAppButton
-                      message={`Hola, me interesa el producto: ${product.name} - ${product.category}`}
+                      message={`Hola, me interesa el producto: ${product.name} - ${product.category || 'Producto'}`}
                       className="w-full"
                     >
                       Comprar por WhatsApp
