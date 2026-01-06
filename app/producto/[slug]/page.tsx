@@ -11,7 +11,9 @@ import { ProductDTO } from '@/src/types/product'
 export const dynamic = 'force-dynamic'
 
 interface ProductoPageProps {
-  params: {
+  params: Promise<{
+    slug: string
+  }> | {
     slug: string
   }
 }
@@ -19,23 +21,46 @@ interface ProductoPageProps {
 async function getProductData(slug: string) {
   try {
     await connectToDatabase()
+    
+    // Limpiar y normalizar el slug
+    const cleanSlug = slug.trim()
+    if (!cleanSlug) {
+      return null
+    }
+    
     // Intentar buscar con el slug tal cual
-    let product = await Product.findOne({ slug }).lean()
+    let product = await Product.findOne({ slug: cleanSlug }).lean()
     
     // Si no se encuentra, intentar con el slug decodificado
     if (!product) {
-      const decodedSlug = decodeURIComponent(slug)
-      product = await Product.findOne({ slug: decodedSlug }).lean()
+      try {
+        const decodedSlug = decodeURIComponent(cleanSlug)
+        if (decodedSlug !== cleanSlug) {
+          product = await Product.findOne({ slug: decodedSlug }).lean()
+        }
+      } catch (e) {
+        // Si falla la decodificación, continuar
+      }
     }
     
-    // Si aún no se encuentra, intentar buscar sin case sensitive
-    if (!product) {
-      product = await Product.findOne({ 
-        slug: { $regex: new RegExp(`^${slug}$`, 'i') } 
-      }).lean()
+    // Si aún no se encuentra, intentar buscar sin case sensitive (solo si el slug no tiene caracteres especiales)
+    if (!product && /^[a-z0-9-]+$/i.test(cleanSlug)) {
+      try {
+        product = await Product.findOne({ 
+          slug: { $regex: new RegExp(`^${cleanSlug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } 
+        }).lean()
+      } catch (e) {
+        // Si falla la búsqueda regex, continuar
+      }
     }
     
     if (!product) {
+      return null
+    }
+    
+    // Validar que el producto tenga los campos mínimos necesarios
+    if (!product.name || product.price === undefined) {
+      console.error('Producto encontrado pero con datos incompletos:', product._id)
       return null
     }
     
@@ -46,8 +71,12 @@ async function getProductData(slug: string) {
   }
 }
 
-async function getRelated(slug: string, category: string) {
+async function getRelated(slug: string, category?: string) {
   try {
+    if (!category) {
+      return []
+    }
+    
     await connectToDatabase()
     const related = await Product.find({
       slug: { $ne: slug },
@@ -65,21 +94,44 @@ async function getRelated(slug: string, category: string) {
 }
 
 export default async function ProductoPage({ params }: ProductoPageProps) {
-  // Decodificar el slug en caso de que tenga caracteres especiales
-  let slug: string
   try {
-    slug = decodeURIComponent(params.slug)
-  } catch {
-    slug = params.slug
-  }
-  
-  const product = await getProductData(slug)
+    // Manejar params como Promise (Next.js 15) o objeto directo
+    const resolvedParams = params instanceof Promise ? await params : params
+    
+    // Validar que params tenga slug
+    if (!resolvedParams || !resolvedParams.slug) {
+      console.error('Slug no proporcionado en params')
+      notFound()
+    }
+    
+    // Decodificar el slug en caso de que tenga caracteres especiales
+    let slug: string
+    try {
+      slug = decodeURIComponent(resolvedParams.slug)
+    } catch {
+      slug = resolvedParams.slug
+    }
+    
+    // Validar que el slug no esté vacío
+    if (!slug || slug.trim() === '') {
+      console.error('Slug vacío')
+      notFound()
+    }
+    
+    const product = await getProductData(slug)
 
-  if (!product) {
-    notFound()
-  }
+    if (!product) {
+      console.error('Producto no encontrado para slug:', slug)
+      notFound()
+    }
 
-  const relatedProducts = await getRelated(slug, product.category)
+    // Validar que el producto tenga los campos mínimos
+    if (!product.name) {
+      console.error('Producto sin nombre:', product._id)
+      notFound()
+    }
+
+    const relatedProducts = await getRelated(slug, product.category || undefined)
 
   return (
     <div className="min-h-screen bg-amaretto-white">
@@ -96,12 +148,14 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
             </Link>
             <span>/</span>
             {product.category && (
-              <Link href={`/coleccion?categoria=${product.category.toLowerCase()}`} className="hover:text-amaretto-pink transition-colors duration-200">
-                {product.category}
-              </Link>
+              <>
+                <Link href={`/coleccion?categoria=${encodeURIComponent(product.category.toLowerCase())}`} className="hover:text-amaretto-pink transition-colors duration-200">
+                  {product.category}
+                </Link>
+                <span>/</span>
+              </>
             )}
-            <span>/</span>
-            <span className="text-amaretto-black">{product.name}</span>
+            <span className="text-amaretto-black">{product.name || 'Producto'}</span>
           </nav>
         </div>
       </section>
@@ -166,7 +220,7 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
 
               {/* Nombre */}
               <h1 className="font-serif text-3xl md:text-4xl font-bold text-amaretto-black">
-                {product.name}
+                {product.name || 'Producto sin nombre'}
               </h1>
 
               {/* Precio */}
@@ -254,11 +308,11 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
 
               {/* Botones de acción */}
               <div className="pt-6 space-y-4">
-                {(product.stock ?? 0) > 0 ? (
+                {(product.stock ?? 0) > 0 && product.price !== undefined ? (
                   <>
                     <AddToCartButton product={product} />
                     <WhatsAppButton
-                      message={`Hola, me interesa el producto: ${product.name} - ${product.category || 'Producto'}`}
+                      message={`Hola, me interesa el producto: ${product.name || 'Producto'} - ${product.category || 'Producto'}`}
                       className="w-full"
                     >
                       Comprar por WhatsApp
@@ -269,7 +323,7 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
                     disabled
                     className="w-full bg-amaretto-gray-light text-amaretto-black/50 font-sans font-medium px-6 py-3 rounded-lg cursor-not-allowed"
                   >
-                    Producto agotado
+                    {product.price === undefined ? 'Producto no disponible' : 'Producto agotado'}
                   </button>
                 )}
               </div>
@@ -296,4 +350,9 @@ export default async function ProductoPage({ params }: ProductoPageProps) {
       </section>
     </div>
   )
+  } catch (error) {
+    console.error('Error en ProductoPage:', error)
+    // En caso de error, mostrar página 404
+    notFound()
+  }
 }
