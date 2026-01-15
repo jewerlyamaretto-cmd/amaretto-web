@@ -63,6 +63,11 @@ export default function ColeccionContent() {
     }
   }, [categoriaParam])
 
+  // Scroll al inicio cuando cambia la página
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [currentPage])
+
   // Filtrar productos
   const filteredProducts = products.filter((product) => {
     let matchesCategory = false

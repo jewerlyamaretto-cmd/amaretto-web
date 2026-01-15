@@ -107,6 +107,25 @@ export default function AdminPage() {
     Collares: [],
     Pulseras: [],
   })
+  
+  // Estado para controlar qué campos son requeridos
+  const [requiredFields, setRequiredFields] = useState({
+    name: true,
+    slug: true,
+    price: true,
+    description: true,
+    category: true,
+    material: false,
+    medidas: false,
+  })
+
+  // Función para alternar si un campo es requerido
+  const toggleFieldRequired = (fieldName: keyof typeof requiredFields) => {
+    setRequiredFields(prev => ({
+      ...prev,
+      [fieldName]: !prev[fieldName]
+    }))
+  }
 
   async function fetchProducts() {
     setIsLoading(true)
@@ -326,27 +345,33 @@ O si tienes MongoDB local:
     setError(null)
 
     try {
-      // Validar campos requeridos
-      if (!form.name || !form.name.trim()) {
+      // Validar campos requeridos (solo si están marcados como requeridos)
+      if (requiredFields.name && (!form.name || !form.name.trim())) {
         setError('El nombre del producto es requerido')
         setIsSubmitting(false)
         return
       }
 
-      if (!form.slug || !form.slug.trim()) {
+      if (requiredFields.slug && (!form.slug || !form.slug.trim())) {
         setError('El slug del producto es requerido')
         setIsSubmitting(false)
         return
       }
 
-      if (!form.description || !form.description.trim()) {
+      if (requiredFields.description && (!form.description || !form.description.trim())) {
         setError('La descripción del producto es requerida')
         setIsSubmitting(false)
         return
       }
 
-      if (!form.price || form.price <= 0) {
+      if (requiredFields.price && (!form.price || form.price <= 0)) {
         setError('El precio del producto debe ser mayor a 0')
+        setIsSubmitting(false)
+        return
+      }
+
+      if (requiredFields.category && !form.category) {
+        setError('La categoría del producto es requerida')
         setIsSubmitting(false)
         return
       }
@@ -365,13 +390,13 @@ O si tienes MongoDB local:
         setForm(prev => ({ ...prev, slug }))
       }
 
-      // Preparar payload base
+      // Preparar payload base (usar valores por defecto si el campo no es requerido)
       const payload: any = {
-        name: form.name.trim(),
-        slug: slug,
-        description: form.description.trim(),
-        price: Number(form.price),
-        category: form.category,
+        name: form.name.trim() || '',
+        slug: slug || '',
+        description: form.description.trim() || '',
+        price: Number(form.price) || 0,
+        category: form.category || 'Anillos',
         images: productImages.length > 0 ? productImages : [],
         stock: Number(form.stock) || 0,
         material: form.material || '',
@@ -723,28 +748,70 @@ O si tienes MongoDB local:
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-sans font-medium text-amaretto-black mb-2">Nombre</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-sans font-medium text-amaretto-black">Nombre</label>
+                  <button
+                    type="button"
+                    onClick={() => toggleFieldRequired('name')}
+                    className={`px-2 py-1 text-xs rounded font-sans transition-colors ${
+                      requiredFields.name
+                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                    title={requiredFields.name ? 'Marcar como opcional' : 'Marcar como requerido'}
+                  >
+                    {requiredFields.name ? 'Requerido ✓' : 'Opcional'}
+                  </button>
+                </div>
                 <input
                   name="name"
                   value={form.name}
                   onChange={handleChange}
                   className="w-full px-4 py-3 rounded-lg border border-amaretto-gray-light focus:ring-2 focus:ring-amaretto-pink outline-none font-sans"
-                  required
+                  required={requiredFields.name}
                 />
               </div>
               <div>
-                <label className="block text-sm font-sans font-medium text-amaretto-black mb-2">Slug</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-sans font-medium text-amaretto-black">Slug</label>
+                  <button
+                    type="button"
+                    onClick={() => toggleFieldRequired('slug')}
+                    className={`px-2 py-1 text-xs rounded font-sans transition-colors ${
+                      requiredFields.slug
+                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                    title={requiredFields.slug ? 'Marcar como opcional' : 'Marcar como requerido'}
+                  >
+                    {requiredFields.slug ? 'Requerido ✓' : 'Opcional'}
+                  </button>
+                </div>
                 <input
                   name="slug"
                   value={form.slug}
                   onChange={handleChange}
                   className="w-full px-4 py-3 rounded-lg border border-amaretto-gray-light focus:ring-2 focus:ring-amaretto-pink outline-none font-sans"
                   placeholder="anillo-elegante"
-                  required
+                  required={requiredFields.slug}
                 />
               </div>
               <div>
-                <label className="block text-sm font-sans font-medium text-amaretto-black mb-2">Precio (MXN)</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-sans font-medium text-amaretto-black">Precio (MXN)</label>
+                  <button
+                    type="button"
+                    onClick={() => toggleFieldRequired('price')}
+                    className={`px-2 py-1 text-xs rounded font-sans transition-colors ${
+                      requiredFields.price
+                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                    title={requiredFields.price ? 'Marcar como opcional' : 'Marcar como requerido'}
+                  >
+                    {requiredFields.price ? 'Requerido ✓' : 'Opcional'}
+                  </button>
+                </div>
                 <input
                   type="number"
                   name="price"
@@ -752,7 +819,7 @@ O si tienes MongoDB local:
                   onChange={handleChange}
                   className="w-full px-4 py-3 rounded-lg border border-amaretto-gray-light focus:ring-2 focus:ring-amaretto-pink outline-none font-sans"
                   min={0}
-                  required
+                  required={requiredFields.price}
                 />
               </div>
               <div className="flex items-center gap-3">
@@ -810,12 +877,27 @@ O si tienes MongoDB local:
                 </>
               )}
               <div>
-                <label className="block text-sm font-sans font-medium text-amaretto-black mb-2">Categoría</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-sans font-medium text-amaretto-black">Categoría</label>
+                  <button
+                    type="button"
+                    onClick={() => toggleFieldRequired('category')}
+                    className={`px-2 py-1 text-xs rounded font-sans transition-colors ${
+                      requiredFields.category
+                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                    title={requiredFields.category ? 'Marcar como opcional' : 'Marcar como requerido'}
+                  >
+                    {requiredFields.category ? 'Requerido ✓' : 'Opcional'}
+                  </button>
+                </div>
                 <select
                   name="category"
                   value={form.category}
                   onChange={handleChange}
                   className="w-full px-4 py-3 rounded-lg border border-amaretto-gray-light focus:ring-2 focus:ring-amaretto-pink outline-none font-sans"
+                  required={requiredFields.category}
                 >
                   <option value="Anillos">Anillos</option>
                   <option value="Aretes">Aretes</option>
@@ -827,13 +909,27 @@ O si tienes MongoDB local:
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-sans font-medium text-amaretto-black mb-2">Descripción</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-sans font-medium text-amaretto-black">Descripción</label>
+                  <button
+                    type="button"
+                    onClick={() => toggleFieldRequired('description')}
+                    className={`px-2 py-1 text-xs rounded font-sans transition-colors ${
+                      requiredFields.description
+                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                    title={requiredFields.description ? 'Marcar como opcional' : 'Marcar como requerido'}
+                  >
+                    {requiredFields.description ? 'Requerido ✓' : 'Opcional'}
+                  </button>
+                </div>
                 <textarea
                   name="description"
                   value={form.description}
                   onChange={handleChange}
                   className="w-full px-4 py-3 rounded-lg border border-amaretto-gray-light focus:ring-2 focus:ring-amaretto-pink outline-none font-sans h-32"
-                  required
+                  required={requiredFields.description}
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1042,21 +1138,51 @@ O si tienes MongoDB local:
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-sans font-medium text-amaretto-black mb-2">Material</label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-sans font-medium text-amaretto-black">Material</label>
+                    <button
+                      type="button"
+                      onClick={() => toggleFieldRequired('material')}
+                      className={`px-2 py-1 text-xs rounded font-sans transition-colors ${
+                        requiredFields.material
+                          ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                      title={requiredFields.material ? 'Marcar como opcional' : 'Marcar como requerido'}
+                    >
+                      {requiredFields.material ? 'Requerido ✓' : 'Opcional'}
+                    </button>
+                  </div>
                   <input
                     name="material"
                     value={form.material}
                     onChange={handleChange}
                     className="w-full px-4 py-3 rounded-lg border border-amaretto-gray-light focus:ring-2 focus:ring-amaretto-pink outline-none font-sans"
+                    required={requiredFields.material}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-sans font-medium text-amaretto-black mb-2">Medidas</label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-sans font-medium text-amaretto-black">Medidas</label>
+                    <button
+                      type="button"
+                      onClick={() => toggleFieldRequired('medidas')}
+                      className={`px-2 py-1 text-xs rounded font-sans transition-colors ${
+                        requiredFields.medidas
+                          ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                      title={requiredFields.medidas ? 'Marcar como opcional' : 'Marcar como requerido'}
+                    >
+                      {requiredFields.medidas ? 'Requerido ✓' : 'Opcional'}
+                    </button>
+                  </div>
                   <input
                     name="medidas"
                     value={form.medidas}
                     onChange={handleChange}
                     className="w-full px-4 py-3 rounded-lg border border-amaretto-gray-light focus:ring-2 focus:ring-amaretto-pink outline-none font-sans"
+                    required={requiredFields.medidas}
                   />
                 </div>
               </div>
